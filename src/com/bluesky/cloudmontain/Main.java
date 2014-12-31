@@ -1,5 +1,7 @@
 package com.bluesky.cloudmontain;
 
+import java.lang.Thread;
+
 /**
  * Trunk Center, the repeater for PTTApp, responsible for
  *  - registration
@@ -17,6 +19,10 @@ package com.bluesky.cloudmontain;
 public class Main {
 
     public static void main(String[] args) {
-	// write your code here
+        TrunkManager trunkManager = new TrunkManager();
+        trunkManager.start();
+        while(true){
+            Thread.sleep(1000);
+        }
     }
 }
