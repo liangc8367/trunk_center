@@ -22,7 +22,11 @@ public class Main {
         TrunkManager trunkManager = new TrunkManager();
         trunkManager.start();
         while(true){
-            Thread.sleep(1000);
+            try {
+                Thread.sleep(1000);
+            }catch (Exception e){
+                System.out.print("exception: " + e);
+            }
         }
     }
 }

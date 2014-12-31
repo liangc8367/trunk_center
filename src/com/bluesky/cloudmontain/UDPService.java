@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 import java.util.logging.Logger;
+import java.lang.IllegalStateException;
 
 /**
  * UDP Service is responsible for send/receive packets to/from
@@ -75,11 +77,23 @@ public class UDPService extends Thread{
         return false;
     }
 
+    /** send payload to bounded target
+     *
+     * @param payload
+     * @return
+     */
     public boolean send(ByteBuffer payload){
+        if(!mBound){
+            throw new IllegalStateException();
+        }
         DatagramPacket pkt  = new DatagramPacket(payload.array(), payload.capacity());
         return send(pkt);
     }
 
+    public boolean send(InetSocketAddress target, ByteBuffer payload){
+        DatagramPacket pkt  = new DatagramPacket(payload.array(), payload.capacity(), target);
+        return send(pkt);
+    }
 
     public void run(){
         if(!bind()){
@@ -125,6 +139,7 @@ public class UDPService extends Thread{
             mSocket = null;
             return false;
         }
+        mBound = true;
         return true;
     }
 
@@ -134,6 +149,7 @@ public class UDPService extends Thread{
     /** private members */
     Configuration   mConfig = null;
     boolean         mRunning = false;
+    boolean         mBound   = false;
     DatagramSocket  mSocket = null;
     CompletionHandler   mRegisteredHandler = null;
 

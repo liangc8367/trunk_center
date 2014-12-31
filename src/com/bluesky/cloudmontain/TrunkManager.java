@@ -1,7 +1,6 @@
 package com.bluesky.cloudmontain;
 
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
@@ -55,7 +54,13 @@ public class TrunkManager {
     private class TrunkMessageProcessor implements Runnable {
         public void run(){
             while(true) {
-                TrunkManagerMessage msg = mMsgQueue.take();
+                TrunkManagerMessage msg;
+                try {
+                    msg = mMsgQueue.take();
+                } catch (Exception e){
+                    LOGGER.warning(TAG + e);
+                    continue;
+                }
                 int msgType = msg.getType();
                 switch (msgType) {
                     case TrunkManagerMessage.MSG_RXED_PACKET:
@@ -68,29 +73,31 @@ public class TrunkManager {
         }
 
         private void handleUdpPacket(DatagramPacket packet){
-            InetAddress sender = packet.getAddress();
-            ProtocolBase proto = ProtocolFactory.getProtocol(ByteBuffer.wrap(packet.getData()));
-            switch(proto.getType()){
+            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+            switch(protoType){
                 case ProtocolBase.PTYPE_REGISTRATION:
-                    Registration reg = (Registration) proto;
-                    handleRegistration(reg, sender);
+                    handleRegistration(packet);
                     break;
                 default:
                     break;
             }
         }
 
-        private void handleRegistration(Registration reg, InetAddress sender){
+        private void handleRegistration(DatagramPacket packet){
+            InetSocketAddress sender = new InetSocketAddress(packet.getAddress(), packet.getPort());
+            Registration reg = (Registration)ProtocolFactory.getProtocol(ByteBuffer.wrap(packet.getData()));
+
             // validation
             LOGGER.info(TAG + "registration from: " + sender);
 
             // ack
-            Ack ack = new Ack(true, reg);
+            Ack ack = new Ack(true, ByteBuffer.wrap(packet.getData()));
             int size = ack.getSize();
             ByteBuffer payload = ByteBuffer.allocate(size);
             ack.serialize(payload);
 
             mUdpService.send(sender, payload);
+
         }
     }
 
@@ -98,7 +105,11 @@ public class TrunkManager {
         @Override
         public void completed(DatagramPacket packet){
             TrunkManagerMessage msg = new TrunkManagerMessage(TrunkManagerMessage.MSG_RXED_PACKET, packet);
-            mMsgQueue.put(msg); //<== may be blocked if we use cap-limited queue.
+            try {
+                mMsgQueue.put(msg); //<== may be blocked if we use cap-limited queue.
+            }catch (Exception e){
+                LOGGER.warning(TAG + e);
+            }
         }
     }
 
