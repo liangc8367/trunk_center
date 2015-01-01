@@ -24,11 +24,11 @@ public class TrunkManager {
     /** public methods */
 
     public TrunkManager(){
+        // sequence number
+        mSeqNumber = GlobalConstants.INIT_SEQ_NUMBER;
         // create udp service
         UDPService.Configuration udpSvcConfig = new UDPService.Configuration();
-        //TODO: read configuration from database
-        int port    = 32000;
-        udpSvcConfig.addrLocal = new InetSocketAddress(port);
+        udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.TRUNK_CENTER_PORT);
         mUdpService = new UDPService(udpSvcConfig);
 
         // message queue
@@ -92,6 +92,7 @@ public class TrunkManager {
 
             // ack
             Ack ack = new Ack(true, ByteBuffer.wrap(packet.getData()));
+            ack.setSequence(++mSeqNumber);
             int size = ack.getSize();
             ByteBuffer payload = ByteBuffer.allocate(size);
             ack.serialize(payload);
@@ -144,6 +145,7 @@ public class TrunkManager {
 
 
     /** private members */
+    private short mSeqNumber    = 0;
     private UDPService  mUdpService = null;
     private BlockingQueue<TrunkManagerMessage> mMsgQueue   = null;
     private Thread      mThread = null;

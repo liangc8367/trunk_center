@@ -49,10 +49,12 @@ public class UDPService extends Thread{
     }
 
     public boolean startService(){
+        mRunning = true;
         try{
             start();
         } catch (IllegalThreadStateException e){
             LOGGER.warning(TAG + "UDP Service has already started");
+            mRunning = false;
             return false;
         }
         return true;
@@ -132,8 +134,9 @@ public class UDPService extends Thread{
      */
     private boolean bind(){
         try {
-            mSocket = new DatagramSocket(mConfig.addrLocal);
-            mSocket.bind(mConfig.addrLocal);
+            LOGGER.warning(TAG + "to bind:" + mConfig.addrLocal);
+            mSocket = new DatagramSocket(32000);
+//            mSocket.bind(new InetSocketAddress(32000));
         }catch ( Exception e ){
             LOGGER.warning(TAG + "failed to bind:" + e);
             mSocket = null;
