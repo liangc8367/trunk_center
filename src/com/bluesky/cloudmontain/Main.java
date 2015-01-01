@@ -1,6 +1,8 @@
 package com.bluesky.cloudmontain;
 
 import java.lang.Thread;
+import java.net.DatagramSocket;
+import java.net.DatagramPacket;
 
 /**
  * Trunk Center, the repeater for PTTApp, responsible for
@@ -19,8 +21,6 @@ import java.lang.Thread;
 public class Main {
 
     public static void main(String[] args) {
-        System.setProperty("java.net.preferIPv4Stack" , "true");
-
         TrunkManager trunkManager = new TrunkManager();
         trunkManager.start();
         while(true){

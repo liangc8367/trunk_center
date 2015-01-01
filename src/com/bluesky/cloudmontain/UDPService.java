@@ -102,15 +102,21 @@ public class UDPService extends Thread{
             return;
         }
 
+        int count = 0;
+        System.out.println("udp receiving...");
         while(mRunning){
+
             byte[]          rxedBuffer = new byte[MAX_UDP_PACKET_LENGTH];
-            DatagramPacket  rxedPacket = new DatagramPacket(rxedBuffer, MAX_UDP_PACKET_LENGTH);
+            DatagramPacket  rxedPacket = new DatagramPacket(rxedBuffer, rxedBuffer.length);
             try {
                 mSocket.receive(rxedPacket);
             }catch (IOException e){
                 LOGGER.warning(TAG + "rxed failed:" + e);
                 continue;
             }
+
+            ++count;
+            System.out.println("Rxed: " + count);
             if (mRegisteredHandler != null) {
                 mRegisteredHandler.completed(rxedPacket);
             } else {
@@ -135,8 +141,7 @@ public class UDPService extends Thread{
     private boolean bind(){
         try {
             LOGGER.warning(TAG + "to bind:" + mConfig.addrLocal);
-            mSocket = new DatagramSocket(32000);
-//            mSocket.bind(new InetSocketAddress(32000));
+            mSocket = new DatagramSocket(mConfig.addrLocal); // create and bind
         }catch ( Exception e ){
             LOGGER.warning(TAG + "failed to bind:" + e);
             mSocket = null;
