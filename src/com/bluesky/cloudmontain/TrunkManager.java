@@ -31,6 +31,10 @@ public class TrunkManager {
         udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.TRUNK_CENTER_PORT);
         mUdpService = new UDPService(udpSvcConfig);
 
+        // register callback
+        mRxHandler  = new UdpRxHandler();
+        mUdpService.setCompletionHandler(mRxHandler);
+
         // message queue
         mMsgQueue   = new LinkedBlockingDeque<TrunkManagerMessage>();
 
@@ -150,6 +154,8 @@ public class TrunkManager {
     private BlockingQueue<TrunkManagerMessage> mMsgQueue   = null;
     private Thread      mThread = null;
     private TrunkMessageProcessor   mProcessor  = null;
+    private UdpRxHandler    mRxHandler;
+
     private final static Logger LOGGER  = Logger.getLogger(UDPService.class.getName());
     private static final String TAG    = "TrunkMgr";
 
