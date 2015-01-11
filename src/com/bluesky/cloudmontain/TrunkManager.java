@@ -4,6 +4,8 @@ import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.logging.Logger;
 
@@ -30,6 +32,8 @@ public class TrunkManager {
         UDPService.Configuration udpSvcConfig = new UDPService.Configuration();
         udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.TRUNK_CENTER_PORT);
         mUdpService = new UDPService(udpSvcConfig);
+
+        createEchoingCallProcessor();
 
         // register callback
         mRxHandler  = new UdpRxHandler();
@@ -109,11 +113,19 @@ public class TrunkManager {
     private class UdpRxHandler implements UDPService.CompletionHandler {
         @Override
         public void completed(DatagramPacket packet){
-            TrunkManagerMessage msg = new TrunkManagerMessage(TrunkManagerMessage.MSG_RXED_PACKET, packet);
-            try {
-                mMsgQueue.put(msg); //<== may be blocked if we use cap-limited queue.
-            }catch (Exception e){
-                LOGGER.warning(TAG + e);
+
+            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
+            if (protoType == ProtocolBase.PTYPE_REGISTRATION ) {
+
+                TrunkManagerMessage msg = new TrunkManagerMessage(TrunkManagerMessage.MSG_RXED_PACKET, packet);
+                try {
+                    mMsgQueue.put(msg); //<== may be blocked if we use cap-limited queue.
+                } catch (Exception e) {
+                    LOGGER.warning(TAG + e);
+                }
+            } else {
+                EchoingCallProcessor.EvRxedPacket event = mCallProcessor.new EvRxedPacket(packet);
+                mCallProcessorExecutor.execute(event);
             }
         }
     }
@@ -145,6 +157,11 @@ public class TrunkManager {
     }
 
 
+    private void createEchoingCallProcessor(){
+        mCallProcessor  = new EchoingCallProcessor();
+        mCallProcessorExecutor = Executors.newSingleThreadExecutor();
+    }
+
     /** private methods */
 
 
@@ -155,6 +172,9 @@ public class TrunkManager {
     private Thread      mThread = null;
     private TrunkMessageProcessor   mProcessor  = null;
     private UdpRxHandler    mRxHandler;
+
+    private EchoingCallProcessor    mCallProcessor;
+    private ExecutorService         mCallProcessorExecutor;
 
     private final static Logger LOGGER  = Logger.getLogger(UDPService.class.getName());
     private static final String TAG    = "TrunkMgr";
