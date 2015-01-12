@@ -160,7 +160,7 @@ public class TrunkManager {
 
     private void createEchoingCallProcessor(){
         mCallProcessorExecutor = Executors.newSingleThreadExecutor();
-        mCallProcessor  = new EchoingCallProcessor(mCallProcessorExecutor);
+        mCallProcessor  = new EchoingCallProcessor(mCallProcessorExecutor, mUdpService);
     }
 
     /** private methods */

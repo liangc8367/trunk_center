@@ -11,5 +11,14 @@ public class GlobalConstants {
     /** call parameters */
     public static final int CALL_FLYWHEEL_PERIOD    = 1500;  // return to idle if no rxed packet
     public static final int CALL_HANG_PERIOD        = 10000; //
+    public static final int CALL_PACKET_INTERVAL    = 20;    // 20ms
+    public static final int CALL_PREAMBLE_NUMBER    = 3;
+    public static final int CALL_TERM_NUMBER        = -3;
+
+    public static final int COMPRESSED_20MS_AUDIO_SIZE  = 20;
+
+    /** call info for faked echo */
+    public static final long    SUID_TRUNK_MANAGER  = 1;
+
 
 }
