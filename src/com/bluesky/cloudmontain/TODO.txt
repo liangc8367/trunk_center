@@ -1,0 +1,5 @@
+TODO:
+- Echo CP to send back recorded audio.
+
+Known Issues:
+- extra/lingering Timer events.
