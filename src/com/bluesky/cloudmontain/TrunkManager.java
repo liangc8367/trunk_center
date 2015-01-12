@@ -93,7 +93,7 @@ public class TrunkManager {
 
         private void handleRegistration(DatagramPacket packet){
             InetSocketAddress sender = new InetSocketAddress(packet.getAddress(), packet.getPort());
-            Registration reg = (Registration)ProtocolFactory.getProtocol(ByteBuffer.wrap(packet.getData()));
+            Registration reg = (Registration)ProtocolFactory.getProtocol(packet);
 
             // validation
             LOGGER.info(TAG + "registration from: " + sender);
@@ -158,8 +158,8 @@ public class TrunkManager {
 
 
     private void createEchoingCallProcessor(){
-        mCallProcessor  = new EchoingCallProcessor();
         mCallProcessorExecutor = Executors.newSingleThreadExecutor();
+        mCallProcessor  = new EchoingCallProcessor(mCallProcessorExecutor);
     }
 
     /** private methods */
