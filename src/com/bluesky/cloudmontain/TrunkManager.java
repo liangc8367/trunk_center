@@ -114,6 +114,7 @@ public class TrunkManager {
         @Override
         public void completed(DatagramPacket packet){
 
+            ProtocolHelpers.peepProtocol(packet);
             short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
             if (protoType == ProtocolBase.PTYPE_REGISTRATION ) {
 

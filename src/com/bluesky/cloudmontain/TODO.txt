@@ -1,5 +1,12 @@
 TODO:
+- timer sequence (done)
+- always running Executor thread
 - Echo CP to send back recorded audio.
 
 Known Issues:
-- extra/lingering Timer events.
+- can't record the 2nd call (- extra/lingering Timer events.? CallTerm and CallData swap?)
+    # after increasing flywheel to 1.5s, looks it's okay. Suspect it's because priority issue: timer thread has high
+      priority than udp thread(?)
+- why there's no enough CallInit and CallTerm?
+- why sometimes CallTerm is ahead of CallData(last)? (CallData seq is later than CallTerm).
+

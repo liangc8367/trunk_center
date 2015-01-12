@@ -9,6 +9,6 @@ public class GlobalConstants {
     public static final int INIT_SEQ_NUMBER     = 12345;
 
     /** call parameters */
-    public static final int CALL_FLYWHEEL_PERIOD    = 150;  // return to idle if no rxed packet
-    public static final int CALL_HANG_PERIOD        = 2000; //
+    public static final int CALL_FLYWHEEL_PERIOD    = 1500;  // return to idle if no rxed packet
+    public static final int CALL_HANG_PERIOD        = 10000; //
 }

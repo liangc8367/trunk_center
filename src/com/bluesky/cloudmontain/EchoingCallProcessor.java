@@ -40,10 +40,15 @@ public class EchoingCallProcessor {
     }
 
     public class EvTimerExpired extends TriggerEvent {
+        public EvTimerExpired(int id){
+            mId = id;
+        }
         @Override
         public void run(){
-            EchoingCallProcessor.this.handleTimerExpiration();
+            EchoingCallProcessor.this.handleTimerExpiration(mId);
         }
+
+        int mId;
     }
 
     /** public methods and members */
@@ -241,8 +246,11 @@ public class EchoingCallProcessor {
 
     }
 
-    private void handleTimerExpiration(){
-        LOGGER.info(TAG + "timer expired");
+    private void handleTimerExpiration(int id){
+        LOGGER.info(TAG + "timer[" + id + "] expired");
+        if( id != mTimerSeed ){
+            LOGGER.warning(TAG + "unmatched timer[" + id + "], expecting: " + mTimerSeed);
+        }
         State   origState = mState;
         mStateNode.handleTimerExpiration();
         if( origState != mState ){
@@ -253,12 +261,16 @@ public class EchoingCallProcessor {
     }
 
     private TimerTask createTimerTask(){
+        ++mTimerSeed;
+        LOGGER.info(TAG + "create timerTask[" + mTimerSeed  + "]");
         return new TimerTask(){
             @Override
             public void run() {
-                EvTimerExpired tmExpired = new EvTimerExpired();
+                EvTimerExpired tmExpired = new EvTimerExpired(mid);
                 mExecutor.execute(tmExpired);
             }
+
+            int mid = mTimerSeed;
         };
     }
 
@@ -333,6 +345,7 @@ public class EchoingCallProcessor {
     EnumMap<State, StateNode> mStateMap;
 
     Timer               mTimer;
+    int                 mTimerSeed = 0;
     ExecutorService     mExecutor;
 
     CallInformation     mCallInfo;
