@@ -4,7 +4,7 @@ import com.bluesky.protocol.CallData;
 import com.bluesky.protocol.CallInit;
 import com.bluesky.protocol.ProtocolBase;
 import com.bluesky.protocol.ProtocolFactory;
-import sun.reflect.generics.reflectiveObjects.LazyReflectiveObjectGenerator;
+
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
@@ -12,7 +12,6 @@ import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
 import java.util.EnumMap;
 import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.logging.Logger;
 
@@ -40,15 +39,15 @@ public class EchoingCallProcessor {
     }
 
     public class EvTimerExpired extends TriggerEvent {
-        public EvTimerExpired(int id){
-            mId = id;
+        public EvTimerExpired(NamedTimerTask timerTask){
+            mTimerTask = timerTask;
         }
         @Override
         public void run(){
-            EchoingCallProcessor.this.handleTimerExpiration(mId);
+            EchoingCallProcessor.this.handleTimerExpiration(mTimerTask);
         }
 
-        int mId;
+        NamedTimerTask mTimerTask;
     }
 
     /** public methods and members */
@@ -76,7 +75,7 @@ public class EchoingCallProcessor {
 
     private class StateNode {
         void handleUdpPacket(DatagramPacket packet){};
-        void handleTimerExpiration(){};
+        void handleTimerExpiration(NamedTimerTask timerTask){};
         void entry(){};
         void exit(){};
     }
@@ -97,8 +96,8 @@ public class EchoingCallProcessor {
         }
 
         @Override
-        void handleTimerExpiration() {
-            super.handleTimerExpiration();
+        void handleTimerExpiration(NamedTimerTask timerTask) {
+
         }
 
         @Override
@@ -133,7 +132,10 @@ public class EchoingCallProcessor {
         }
 
         @Override
-        void handleTimerExpiration() {
+        void handleTimerExpiration(NamedTimerTask timerTask) {
+            if( timerTask != mTimerTask ){
+                LOGGER.warning(TAG + "lingering timer task: " + timerTask.id());
+            }
             LOGGER.info(TAG + "flywheel time expired");
             mState = State.IDLE;
         }
@@ -142,7 +144,6 @@ public class EchoingCallProcessor {
         void entry() {
             LOGGER.info(TAG + "receiving");
             armTimer();
-
         }
 
         @Override
@@ -160,7 +161,8 @@ public class EchoingCallProcessor {
             armTimer();
         }
 
-        TimerTask   mTimerTask;
+        NamedTimerTask   mTimerTask;
+
     }
 
     private class StateCallHang extends StateNode {
@@ -180,7 +182,7 @@ public class EchoingCallProcessor {
         }
 
         @Override
-        void handleTimerExpiration() {
+        void handleTimerExpiration(NamedTimerTask timerTask) {
             LOGGER.info(TAG + "call hang ended");
             mState = State.IDLE;
         }
@@ -206,7 +208,7 @@ public class EchoingCallProcessor {
 //            armTimer();
 //        }
 
-        TimerTask   mTimerTask;
+        NamedTimerTask   mTimerTask;
 
     }
 
@@ -218,8 +220,8 @@ public class EchoingCallProcessor {
         }
 
         @Override
-        void handleTimerExpiration() {
-            super.handleTimerExpiration();
+        void handleTimerExpiration(NamedTimerTask timerTask) {
+
         }
 
         @Override
@@ -246,13 +248,11 @@ public class EchoingCallProcessor {
 
     }
 
-    private void handleTimerExpiration(int id){
-        LOGGER.info(TAG + "timer[" + id + "] expired");
-        if( id != mTimerSeed ){
-            LOGGER.warning(TAG + "unmatched timer[" + id + "], expecting: " + mTimerSeed);
-        }
+    private void handleTimerExpiration(NamedTimerTask timerTask){
+        LOGGER.info(TAG + "timer[" + timerTask.id() + "] expired");
+
         State   origState = mState;
-        mStateNode.handleTimerExpiration();
+        mStateNode.handleTimerExpiration(timerTask);
         if( origState != mState ){
             mStateNode.exit();
             mStateNode = mStateMap.get(mState);
@@ -260,17 +260,15 @@ public class EchoingCallProcessor {
         }
     }
 
-    private TimerTask createTimerTask(){
+    private NamedTimerTask createTimerTask(){
         ++mTimerSeed;
         LOGGER.info(TAG + "create timerTask[" + mTimerSeed  + "]");
-        return new TimerTask(){
+        return new NamedTimerTask(mTimerSeed){
             @Override
             public void run() {
-                EvTimerExpired tmExpired = new EvTimerExpired(mid);
+                EvTimerExpired tmExpired = new EvTimerExpired(this);
                 mExecutor.execute(tmExpired);
             }
-
-            int mid = mTimerSeed;
         };
     }
 
@@ -284,10 +282,10 @@ public class EchoingCallProcessor {
             mCallInfo.mTargetId = callInit.getTargetId();
 
             try {
-                mOutstream = new BufferedOutputStream(new FileOutputStream("out.amr"));
+                mOutStream = new BufferedOutputStream(new FileOutputStream("out.amr"));
 
                 final String AMR_FILE_HEADER_SINGLE_CHANNEL = "#!AMR\n";
-                mOutstream.write(AMR_FILE_HEADER_SINGLE_CHANNEL.getBytes());
+                mOutStream.write(AMR_FILE_HEADER_SINGLE_CHANNEL.getBytes());
 
             } catch (Exception e){
                 LOGGER.warning(TAG + "error in creating: " + e);
@@ -302,7 +300,7 @@ public class EchoingCallProcessor {
 
             //TODO: validate call data
             try {
-                mOutstream.write(callData.getAudioData().array(),
+                mOutStream.write(callData.getAudioData().array(),
                         callData.getAudioData().arrayOffset(),
                         callData.getAudioData().limit()
                 );
@@ -315,8 +313,8 @@ public class EchoingCallProcessor {
 
     private void stopRecording(DatagramPacket packet){
         try {
-            mOutstream.flush();
-            mOutstream.close();
+            mOutStream.flush();
+            mOutStream.close();
         } catch (Exception e){
             LOGGER.warning(TAG + "error in closing:" + e);
         }
@@ -350,7 +348,7 @@ public class EchoingCallProcessor {
 
     CallInformation     mCallInfo;
 
-    BufferedOutputStream    mOutstream;
+    BufferedOutputStream mOutStream;
 
     static final String TAG = "EchoingCP: ";
     static final Logger LOGGER  = Logger.getLogger(UDPService.class.getName());

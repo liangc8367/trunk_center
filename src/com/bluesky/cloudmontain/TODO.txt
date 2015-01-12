@@ -1,7 +1,6 @@
 TODO:
-- timer sequence (done)
-- always running Executor thread
 - Echo CP to send back recorded audio.
+- always running Executor thread
 
 Known Issues:
 - can't record the 2nd call (- extra/lingering Timer events.? CallTerm and CallData swap?)
@@ -9,4 +8,7 @@ Known Issues:
       priority than udp thread(?)
 - why there's no enough CallInit and CallTerm?
 - why sometimes CallTerm is ahead of CallData(last)? (CallData seq is later than CallTerm).
+
+DONE:
+- timer sequence (done)
 

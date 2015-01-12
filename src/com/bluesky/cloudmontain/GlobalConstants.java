@@ -11,4 +11,5 @@ public class GlobalConstants {
     /** call parameters */
     public static final int CALL_FLYWHEEL_PERIOD    = 1500;  // return to idle if no rxed packet
     public static final int CALL_HANG_PERIOD        = 10000; //
+
 }
