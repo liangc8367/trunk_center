@@ -1,9 +1,8 @@
-package com.bluesky.cloudmontain;
+package com.bluesky.common;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
@@ -161,7 +160,7 @@ public class UDPService extends Thread{
     DatagramSocket  mSocket = null;
     CompletionHandler   mRegisteredHandler = null;
 
-    private final static String TAG = GlobalConstants.TAG + ":UDPSvc:";
+    private final static String TAG = ":UDPSvc:";
     private final static Logger LOGGER  = Logger.getLogger(UDPService.class.getName());
     private final static int MAX_UDP_PACKET_LENGTH = 1000; //TODO: to make it even smaller
 }
