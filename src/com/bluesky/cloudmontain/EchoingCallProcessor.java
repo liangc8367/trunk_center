@@ -253,23 +253,23 @@ public class EchoingCallProcessor {
                         ++mTxCount;
                         if (mTxCount >= GlobalConstants.CALL_PREAMBLE_NUMBER) {
                             mTxStep = TX_DATA;
-                            mTxCount = 0;
                         }
                         break;
                     case TX_DATA:
-                        if (sendCallData()) {
-                            ++mTxCount;
+                        if (sendCallData(mTxCount)) {
                         } else {
                             LOGGER.info(TAG + "sent " + mTxCount + " audio data packets");
                             mTxStep = TX_TERM;
-                            sendCallTerm();
-                            mTxCount = 1;
+                            sendCallTerm(mTxCount);
+                            ++mTxTermCount;
                         }
+                        ++mTxCount;
                         break;
                     case TX_TERM:
-                        sendCallTerm();
+                        sendCallTerm(mTxCount);
                         ++mTxCount;
-                        if (mTxCount >= GlobalConstants.CALL_TERM_NUMBER) {
+                        ++mTxTermCount;
+                        if (mTxTermCount >= GlobalConstants.CALL_TERM_NUMBER) {
                             mState = State.IDLE; //<== we go to idle, otherwise, we will repeat the tx again
                         }
                         break;
@@ -286,22 +286,29 @@ public class EchoingCallProcessor {
 
         @Override
         void entry() {
+            mTxCount = 0;
             LOGGER.info(TAG + "transmitting");
-            armTimer();
+            mTimeFirst = System.nanoTime();
             sendCallInit();
             ++mTxCount;
+            armTimer();
             mTxStep = TX_INIT;
         }
-
         @Override
         void exit() {
+            LOGGER.warning(TAG + "tx done, total pkt=" + mTxCount);
             mTimerTask.cancel();
             mTimerTask = null;
         }
 
         private void armTimer(){
+            long timeNow = System.nanoTime();
             mTimerTask = createTimerTask();
-            mTimer.schedule(mTimerTask, GlobalConstants.CALL_PACKET_INTERVAL);
+            long delay = GlobalConstants.CALL_PACKET_INTERVAL* mTxCount- (int)((timeNow - mTimeFirst)/(1000*1000));
+            if(delay < 0){
+                LOGGER.warning(TAG + "negative delay");
+            }
+            mTimer.schedule(mTimerTask, delay);
         }
         private void rearmTimer(){
             mTimerTask.cancel();
@@ -314,8 +321,10 @@ public class EchoingCallProcessor {
         static final int TX_DATA = 1;
         static final int TX_TERM = 2;
 
-        int             mTxCount = 0;
+        short             mTxCount;
+        short mTxTermCount;
         int             mTxStep;
+        long mTimeFirst; // nano seconds
     }
 
     private void handleUdpPacket(DatagramPacket packet){
@@ -423,7 +432,7 @@ public class EchoingCallProcessor {
      *
      * @return true if not EOF
      */
-    private boolean sendCallData(){
+    private boolean sendCallData(short audioSeq){
         byte[] buffer = new byte[GlobalConstants.COMPRESSED_20MS_AUDIO_SIZE];
         int sz;
         try{
@@ -441,7 +450,7 @@ public class EchoingCallProcessor {
         CallData callData = new CallData(
                 mCallInfo.mTargetId,
                 GlobalConstants.SUID_TRUNK_MANAGER,
-                (short)(mTxSeq + 0x100),
+                audioSeq,
                 ByteBuffer.wrap(buffer, 0, sz));
         callData.setSequence(++mTxSeq);
         ByteBuffer payload = ByteBuffer.allocate(callData.getSize());
@@ -451,16 +460,19 @@ public class EchoingCallProcessor {
         return true;
     }
 
-    private void sendCallTerm(){
-        try{
-            mInStream.close();
-            mInStream = null;
-        } catch( Exception e){
-            LOGGER.warning(TAG + "error happened in close " + e);
+    private void sendCallTerm(short audioSeq){
+        if( mInStream != null) {
+            try {
+                mInStream.close();
+                mInStream = null;
+            } catch (Exception e) {
+                LOGGER.warning(TAG + "error happened in close " + e);
+            }
         }
         CallTerm callTerm = new CallTerm(
                 mCallInfo.mTargetId,
-                GlobalConstants.SUID_TRUNK_MANAGER
+                GlobalConstants.SUID_TRUNK_MANAGER,
+                audioSeq
         );
         callTerm.setSequence(++mTxSeq);
         ByteBuffer payload = ByteBuffer.allocate(callTerm.getSize());

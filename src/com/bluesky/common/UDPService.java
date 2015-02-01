@@ -115,7 +115,7 @@ public class UDPService extends Thread{
             }
 
             ++count;
-            System.out.println("Rxed: " + count);
+//            System.out.println("Rxed: " + count);
             if (mRegisteredHandler != null) {
                 mRegisteredHandler.completed(rxedPacket);
             } else {
