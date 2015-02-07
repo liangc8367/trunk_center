@@ -1,4 +1,4 @@
-package com.bluesky.cloudmontain;
+package com.bluesky.common;
 
 /**
  * Created by liangc on 31/12/14.

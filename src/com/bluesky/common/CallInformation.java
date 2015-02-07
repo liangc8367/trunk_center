@@ -1,4 +1,4 @@
-package com.bluesky.cloudmontain;
+package com.bluesky.common;
 
 import java.net.InetSocketAddress;
 
@@ -7,7 +7,7 @@ import java.net.InetSocketAddress;
  * Created by liangc on 11/01/15.
  */
 public class CallInformation {
-    InetSocketAddress   mSenderIpPort;
+    public InetSocketAddress   mSenderIpPort;
 
     public short mSequence;
     public long mTargetId;
