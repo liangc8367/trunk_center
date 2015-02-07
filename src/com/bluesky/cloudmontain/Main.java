@@ -21,13 +21,14 @@ import java.net.DatagramPacket;
 public class Main {
 
     public static void main(String[] args) {
+        System.out.println("Trunking Control Manager started.");
         TrunkManager trunkManager = new TrunkManager();
         trunkManager.start();
         while(true){
             try {
                 Thread.sleep(1000);
             }catch (Exception e){
-                System.out.print("exception: " + e);
+                System.out.println("exception: " + e);
             }
         }
     }

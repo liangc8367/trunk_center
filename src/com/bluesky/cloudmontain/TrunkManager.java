@@ -9,9 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.logging.Logger;
 
-import com.bluesky.common.GlobalConstants;
-import com.bluesky.common.ProtocolHelpers;
-import com.bluesky.common.UDPService;
+import com.bluesky.common.*;
 import com.bluesky.protocol.*;
 
 /**
@@ -34,7 +32,9 @@ public class TrunkManager {
         // create udp service
         UDPService.Configuration udpSvcConfig = new UDPService.Configuration();
         udpSvcConfig.addrLocal = new InetSocketAddress(GlobalConstants.TRUNK_CENTER_PORT);
-        mUdpService = new UDPService(udpSvcConfig);
+        udpSvcConfig.addrRemote = new InetSocketAddress(0);
+        udpSvcConfig.clientMode = false;
+        mUdpService = new UDPService(udpSvcConfig, LOGGER);
 
         createEchoingCallProcessor();
 
@@ -69,7 +69,7 @@ public class TrunkManager {
                 try {
                     msg = mMsgQueue.take();
                 } catch (Exception e){
-                    LOGGER.warning(TAG + e);
+                    LOGGER.w(TAG, "exp: " + e);
                     continue;
                 }
                 int msgType = msg.getType();
@@ -99,7 +99,7 @@ public class TrunkManager {
             Registration reg = (Registration)ProtocolFactory.getProtocol(packet);
 
             // validation
-            LOGGER.info(TAG + "registration from: " + sender);
+            LOGGER.i(TAG, "registration from: " + sender);
 
             // ack
             Ack ack = new Ack(true, ByteBuffer.wrap(packet.getData()));
@@ -125,7 +125,7 @@ public class TrunkManager {
                 try {
                     mMsgQueue.put(msg); //<== may be blocked if we use cap-limited queue.
                 } catch (Exception e) {
-                    LOGGER.warning(TAG + e);
+                    LOGGER.w(TAG, "exp: " + e);
                 }
             } else {
                 EchoingCallProcessor.EvRxedPacket event = mCallProcessor.new EvRxedPacket(packet);
@@ -180,7 +180,7 @@ public class TrunkManager {
     private EchoingCallProcessor    mCallProcessor;
     private ExecutorService         mCallProcessorExecutor;
 
-    private final static Logger LOGGER  = Logger.getLogger(UDPService.class.getName());
+    private final static OLog LOGGER = new XLog();
     private static final String TAG    = "TrunkMgr";
 
 }

@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="BlueskyCommon">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/../BlueskyCommon" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/../BlueskyCommon/src" />
+    </SOURCES>
+  </library>
+</component>
