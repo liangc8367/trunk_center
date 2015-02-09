@@ -3,6 +3,7 @@ package com.bluesky.cloudmontain;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +28,8 @@ public class TrunkManager {
     /** public methods */
 
     public TrunkManager(){
+        initSubDatabase();
+
         // sequence number
         mSeqNumber = GlobalConstants.INIT_SEQ_NUMBER;
         // create udp service
@@ -97,19 +100,24 @@ public class TrunkManager {
         private void handleRegistration(DatagramPacket packet){
             InetSocketAddress sender = new InetSocketAddress(packet.getAddress(), packet.getPort());
             Registration reg = (Registration)ProtocolFactory.getProtocol(packet);
+            long suid = reg.getSUID();
 
             // validation
-            LOGGER.i(TAG, "registration from: " + sender);
-
-            // ack
-            Ack ack = new Ack(true, ByteBuffer.wrap(packet.getData()));
+            Ack ack;
+            if(mUserDatabase.hasSubscriber(suid)) {
+                // ack
+                ack = new Ack(true, ByteBuffer.wrap(packet.getData()));
+                LOGGER.i(TAG, "registration from: " + sender + ", unknown subscriber=" + suid);
+            } else {
+                mUserDatabase.online(suid);
+                ack = new Ack(false, ByteBuffer.wrap(packet.getData()));
+                LOGGER.i(TAG, "registration from: " + sender + ", legitimate su=" + suid);
+            }
             ack.setSequence(++mSeqNumber);
             int size = ack.getSize();
             ByteBuffer payload = ByteBuffer.allocate(size);
             ack.serialize(payload);
-
             mUdpService.send(sender, payload);
-
         }
     }
 
@@ -117,21 +125,73 @@ public class TrunkManager {
         @Override
         public void completed(DatagramPacket packet){
 
-            ProtocolHelpers.peepProtocol(packet);
+            LOGGER.d(TAG, ProtocolHelpers.peepProtocol(packet));
             short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
-            if (protoType == ProtocolBase.PTYPE_REGISTRATION ) {
+            switch (protoType) {
+                case ProtocolBase.PTYPE_REGISTRATION:
 
-                TrunkManagerMessage msg = new TrunkManagerMessage(TrunkManagerMessage.MSG_RXED_PACKET, packet);
-                try {
-                    mMsgQueue.put(msg); //<== may be blocked if we use cap-limited queue.
-                } catch (Exception e) {
-                    LOGGER.w(TAG, "exp: " + e);
-                }
-            } else {
-                EchoingCallProcessor.EvRxedPacket event = mCallProcessor.new EvRxedPacket(packet);
-                mCallProcessorExecutor.execute(event);
+                    TrunkManagerMessage msg = new TrunkManagerMessage(TrunkManagerMessage.MSG_RXED_PACKET, packet);
+                    try {
+                        mMsgQueue.put(msg); //<== may be blocked if we use cap-limited queue.
+                    } catch (Exception e) {
+                        LOGGER.w(TAG, "exp: " + e);
+                    }
+                    break;
+                case ProtocolBase.PTYPE_CALL_INIT:
+                case ProtocolBase.PTYPE_CALL_DATA:
+                case ProtocolBase.PTYPE_CALL_TERM:
+                    ProtocolBase proto = ProtocolFactory.getProtocol(packet);
+                    CallProcessor cp = findCallProcessor(proto);
+                    if(cp!=null){
+
+                    }
+                    break;
+                default:
+                    break;
             }
+//            EchoingCallProcessor.EvRxedPacket event = mCallProcessor.new EvRxedPacket(packet);
+//            mCallProcessorExecutor.execute(event);
         }
+    }
+
+    private CallProcessor findCallProcessor(ProtocolBase proto){
+        short protoType = proto.getType();
+        long source = 0, target =0;
+        switch( protoType ){
+            case ProtocolBase.PTYPE_CALL_INIT:
+                CallInit callInit = (CallInit) proto;
+                source = callInit.getSuid();
+                target = callInit.getTargetId();
+                break;
+            case ProtocolBase.PTYPE_CALL_DATA:
+                CallData callData = (CallData) proto;
+                source = callData.getSuid();
+                target = callData.getTargetId();
+                break;
+            case ProtocolBase.PTYPE_CALL_TERM:
+                CallTerm callTerm = (CallTerm)proto;
+                source = callTerm.getSuid();
+                target = callTerm.getTargetId();
+                break;
+            default:
+                break;
+        }
+        if( source == 0){
+            LOGGER.d(TAG, "invalid packet(type = " + protoType + ", or source (id=" + source +")");
+            return null;
+        }
+
+        if( !mUserDatabase.isGroupMember(source, target)){
+            LOGGER.d(TAG, "illegal call attemp from " + source + " to " + target);
+            return null;
+        }
+
+        CallProcessor cp = mCPs.get(target);
+        if(cp == null){
+            cp = new CallProcessor(target, source, LOGGER);
+            mCPs.put(new Long(target), cp);
+        }
+        return cp;
     }
 
     private class TrunkManagerMessage {
@@ -166,6 +226,28 @@ public class TrunkManager {
         mCallProcessor  = new EchoingCallProcessor(mCallProcessorExecutor, mUdpService);
     }
 
+    private void initSubDatabase(){
+        for(long i=2; i<10; i++) {
+            mUserDatabase.addSubscriber(i);
+        }
+        for(long i=0x900; i< 0x905; i++){
+            mUserDatabase.addGroup(i);
+        }
+
+        for(long i=2; i<10; i++) {
+            mUserDatabase.signup(i, 0x900);
+        }
+
+        mUserDatabase.signup(4, 0x901);
+        mUserDatabase.signup(6, 0x901);
+        mUserDatabase.signup(8, 0x901);
+        mUserDatabase.signup(3, 0x092);
+        mUserDatabase.signup(5, 0x092);
+        mUserDatabase.signup(3, 0x093);
+        mUserDatabase.signup(4, 0x903);
+        mUserDatabase.signup(5, 0x903);
+    }
+
     /** private methods */
 
 
@@ -179,6 +261,9 @@ public class TrunkManager {
 
     private EchoingCallProcessor    mCallProcessor;
     private ExecutorService         mCallProcessorExecutor;
+    private final SubscriberDatabase mUserDatabase = new SubscriberDatabase();
+
+    private final HashMap<Long, CallProcessor> mCPs = new HashMap<Long, CallProcessor>();
 
     private final static OLog LOGGER = new XLog();
     private static final String TAG    = "TrunkMgr";
