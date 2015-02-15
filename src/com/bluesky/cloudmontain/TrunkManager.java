@@ -187,7 +187,8 @@ public class TrunkManager {
 
         CallProcessor cp = mCPs.get(target);
         if(cp == null){
-            cp = new CallProcessor(target, source, mRepeater, mUserDatabase, LOGGER);
+//            cp = new CallProcessor(target, source, mRepeater, mUserDatabase, LOGGER);
+            cp = createCallProcessor(target, source);
             mCPs.put(new Long(target), cp);
         }
         return cp;
@@ -247,7 +248,10 @@ public class TrunkManager {
         mUserDatabase.signup(5, 0x903);
     }
 
-    /** private methods */
+    private CallProcessor createCallProcessor(long suid, long target)
+    {
+
+    }
 
 
     /** private members */
