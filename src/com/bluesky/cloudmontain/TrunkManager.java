@@ -248,9 +248,19 @@ public class TrunkManager {
         mUserDatabase.signup(5, 0x903);
     }
 
+    /** create callprocessor, and its executor service.
+     *      it's not possible to use threadpool, because we have to ensure all methods of
+     *      a cp has to be run in the same thread context, as a way to eliminate race
+     *      condition. I may consider to create a ExecuteService pool in future.
+     * @param suid
+     * @param target
+     * @return
+     */
     private CallProcessor createCallProcessor(long suid, long target)
     {
-
+        ExecutorService exec = Executors.newSingleThreadExecutor();
+        ThreadedCP cp = new ThreadedCP(exec, target, suid, mRepeater, mUserDatabase,LOGGER);
+        return cp;
     }
 
 
@@ -269,6 +279,7 @@ public class TrunkManager {
     private final SubscriberDatabase mUserDatabase = new SubscriberDatabase();
 
     private final HashMap<Long, CallProcessor> mCPs = new HashMap<Long, CallProcessor>();
+    private final HashMap<Long, ExecutorService> mExecs = new HashMap<Long, ExecutorService>();
 
     private final static OLog LOGGER = new XLog();
     private static final String TAG    = "TrunkMgr";
