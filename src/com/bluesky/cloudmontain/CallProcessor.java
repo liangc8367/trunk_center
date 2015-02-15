@@ -4,14 +4,13 @@ import com.bluesky.common.CallInformation;
 import com.bluesky.common.GlobalConstants;
 import com.bluesky.common.NamedTimerTask;
 import com.bluesky.common.OLog;
-import com.bluesky.protocol.CallInit;
-import com.bluesky.protocol.ProtocolBase;
-import com.bluesky.protocol.ProtocolFactory;
+import com.bluesky.protocol.*;
 
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Timer;
 
 /**
@@ -22,18 +21,17 @@ public class CallProcessor {
         public void callEnd();
     }
 
-    public CallProcessor(long grp_id, long su_id, final OLog logger){
+    public CallProcessor(long grp_id, long su_id, final Repeator rptr,  SubscriberDatabase database, final OLog logger){
         TAG = "CP[" + grp_id + "]";
+        mRptr = rptr;
         mLogger = logger;
         mTimer = new Timer(TAG);
+        mOnlineSubs = database.getOnlineMembers(grp_id);
         initializeSM();
         mStateNode.entry();
     }
 
     public void packetReceived(DatagramPacket packet){
-        if(!validatePacket(packet)){
-            return;
-        }
         saveStateContext();
         mStateNode.packetReceived(packet);
         updateStateContext();
@@ -64,53 +62,73 @@ public class CallProcessor {
         mCallInfo.mTargetId = callInit.getTargetId();
     }
 
-    // to validate/authenticate incoming packet, it shall be from current transmitter,
-    // unless current state is hang or idle.
-    private boolean validatePacket(DatagramPacket packet){
-        switch(mState){
-            case INIT:
-            case TXING:
-            {
-                if( packet.getAddress() != mCallInfo.mSenderIpPort.getAddress()
-                    || packet.getPort() != mCallInfo.mSenderIpPort.getPort() )
-                {
-                    mLogger.d(TAG, "state=" + mState + ", unexp sender:"
-                            + packet.getAddress() + ":" + packet.getPort());
-                    return false;
-                }
-            }
-                break;
-            case HANG:
-                break;
-            default:
-                break;
-        }
-
-        return true;
-    }
-
     /** forward packet to all group members, except current transmitting SU */
-    private void forwardToGrpMembers(DatagramPacket packet){
-
+    private void forwardToGrpMembers(ProtocolBase proto){
+        mLastTime = System.nanoTime();
+        mRptr.repeat(mOnlineSubs, mCallInfo, proto);
     }
 
-    private NamedTimerTask createTimerTask(){
-        return null;
+    protected NamedTimerTask createTimerTask(){
+        ++mTimerSeed;
+        mLogger.d(TAG, "create timerTask[" + mTimerSeed +"]");
+        return new NamedTimerTask(mTimerSeed) {
+            @Override
+            public void run() {
+                (CallProcessor.this).timerExpired(this);
+            }
+        };
     }
 
-    private void rearmFlyWheel(){
-
+    /** rearm flywheel for given duration
+     *
+     * @param dur
+     */
+    private void rearmFlyWheel(int dur){
+        if(mFlywheelTimerTask!=null){
+            mFlywheelTimerTask.cancel();
+        }
+        mFlywheelTimerTask = createTimerTask();
+        mTimer.schedule(mFlywheelTimerTask, dur);
     }
 
+    private void cancelFlywheel(){
+        if(mFlywheelTimerTask!=null){
+            mFlywheelTimerTask.cancel();
+            mFlywheelTimerTask = null;
+        }
+    }
+    /** synthesize callInit based on last callInit seq, and send to all grp members
+     *
+     */
     private void sendCallInit(){
-
+        CallInit callInit = new CallInit(mCallInfo.mTargetId, mCallInfo.mSuid);
+        callInit.setSequence(++mCallInitSeq);
+        forwardToGrpMembers(callInit);
     }
 
+    /** synthesize callTerm based on last callTerm seq, and send to all grp members
+     *
+     */
+    private void sendCallTerm(){
+        CallTerm callTerm = new CallTerm(mCallInfo.mTargetId, mCallInfo.mSuid, ++mCallTermAudioSeq);
+        callTerm.setSequence(++mCallInitSeq);
+        forwardToGrpMembers(callTerm);
+    }
+
+
+    ////////////////////////////// private members ////////////////////////////
+    short mCallInitSeq, mCallTermSeq, mCallTermAudioSeq;
+    long mLastTime;
+    protected int mTimerSeed = 0;
+
+    List<SubscriberDatabase.OnlineRecord> mOnlineSubs;
     NamedTimerTask mFlywheelTimerTask;
     Timer mTimer;
+    final Repeator mRptr;
     final CallInformation mCallInfo = new CallInformation();
     final OLog mLogger;
 
+    /////////////////////////////////// sub states ///////////////////////////
     private enum State {
         IDLE,
         INIT,
@@ -149,7 +167,8 @@ public class CallProcessor {
                 // TODO: assert type is call-init
                 CallInit callInit = (CallInit) ProtocolFactory.getProtocol(packet);
                 recordCallInfo(callInit, packet);
-                forwardToGrpMembers(packet);
+                mCallInitSeq = callInit.getSequence();
+                forwardToGrpMembers(callInit);
                 mState = State.INIT;
             }
         }
@@ -167,7 +186,7 @@ public class CallProcessor {
         @Override
         public void entry() {
             mLogger.d(TAG, "entry init");
-            rearmFlyWheel();
+            rearmFlyWheel(GlobalConstants.CALL_FLYWHEEL_PERIOD);
             mTimerTask = createTimerTask();
             mTimer.schedule(mTimerTask, GlobalConstants.CALL_PACKET_INTERVAL);
         }
@@ -195,20 +214,27 @@ public class CallProcessor {
 
         @Override
         public void packetReceived(DatagramPacket packet) {
+            if(!validatePacket(packet)){
+                return;
+            }
             ProtocolBase proto = ProtocolFactory.getProtocol(packet);
             short protoType = proto.getType();
             switch(protoType){
                 case ProtocolBase.PTYPE_CALL_INIT:
-                    forwardToGrpMembers(packet);
+                    CallInit callInit = (CallInit) proto;
+                    mCallInitSeq = callInit.getSequence();
+                    forwardToGrpMembers(proto);
                     rearmTxTimer();
-                    rearmFlyWheel();
+                    rearmFlyWheel(GlobalConstants.CALL_FLYWHEEL_PERIOD);
                     break;
                 case ProtocolBase.PTYPE_CALL_DATA:
-                    forwardToGrpMembers(packet);
+                    forwardToGrpMembers(proto);
                     mState = State.TXING;
                     break;
                 case ProtocolBase.PTYPE_CALL_TERM:
-                    forwardToGrpMembers(packet);
+                    mCallTermSeq = ((CallTerm) proto).getSequence();
+                    mCallTermAudioSeq = ((CallTerm) proto).getAudioSeq();
+                    forwardToGrpMembers(proto);
                     mState = State.HANG;
                     break;
                 default:
@@ -222,7 +248,46 @@ public class CallProcessor {
          */
         private void rearmTxTimer(){
             mTimerTask = createTimerTask();
-            mTimer.schedule(mTimerTask, GlobalConstants.CALL_PACKET_INTERVAL);
+            long timeNow = System.nanoTime();
+            mTimer.schedule(mTimerTask, GlobalConstants.CALL_PACKET_INTERVAL + mLastTime - timeNow);
+        }
+
+        private boolean validatePacket(DatagramPacket packet){
+            if( packet.getAddress() != mCallInfo.mSenderIpPort.getAddress()
+                    || packet.getPort() != mCallInfo.mSenderIpPort.getPort())
+            {
+                mLogger.d(TAG, "state=" + mState + ", unexp sender:"
+                        + packet.getAddress() + ":" + packet.getPort());
+                return false;
+            }
+
+            ProtocolBase proto = ProtocolFactory.getProtocol(packet);
+            long suid = 0;
+            long tgtid = 0;
+
+            switch( proto.getType()){
+                case ProtocolBase.PTYPE_CALL_INIT:
+                    CallInit callInit = (CallInit) proto;
+                    suid = callInit.getSuid();
+                    tgtid = callInit.getTargetId();
+                    break;
+                case ProtocolBase.PTYPE_CALL_DATA:
+                    CallData callData = (CallData) proto;
+                    suid = callData.getSuid();
+                    tgtid = callData.getTargetId();
+                    break;
+                case ProtocolBase.PTYPE_CALL_TERM:
+                    CallTerm callTerm = (CallTerm) proto;
+                    suid = callTerm.getSuid();
+                    tgtid = callTerm.getTargetId();
+                    break;
+            }
+
+            if( suid != mCallInfo.mSuid || tgtid != mCallInfo.mTargetId ){
+                mLogger.d(TAG, "init: call init for different tgt, src=" + suid + ", target=" + tgtid);
+                return false;
+            }
+            return true;
         }
 
         NamedTimerTask mTimerTask;
@@ -237,7 +302,7 @@ public class CallProcessor {
         @Override
         public void entry() {
             mLogger.d(TAG, "entry txing");
-            rearmFlyWheel();
+            rearmFlyWheel(GlobalConstants.CALL_FLYWHEEL_PERIOD);
         }
 
         @Override
@@ -255,22 +320,71 @@ public class CallProcessor {
 
         @Override
         public void packetReceived(DatagramPacket packet) {
+            if(!validatePacket(packet)){
+                return;
+            }
             ProtocolBase proto = ProtocolFactory.getProtocol(packet);
             short protoType = proto.getType();
             switch(protoType){
                 case ProtocolBase.PTYPE_CALL_INIT:
+                    forwardToGrpMembers(proto);
+                    rearmFlyWheel(GlobalConstants.CALL_FLYWHEEL_PERIOD);
+                    break;
                 case ProtocolBase.PTYPE_CALL_DATA:
-                    forwardToGrpMembers(packet);
-                    rearmFlyWheel();
+                    mCallTermSeq = ((CallData) proto).getSequence();
+                    mCallTermAudioSeq = ((CallData) proto).getAudioSeq();
+                    forwardToGrpMembers(proto);
+                    rearmFlyWheel(GlobalConstants.CALL_FLYWHEEL_PERIOD);
                     break;
                 case ProtocolBase.PTYPE_CALL_TERM:
-                    forwardToGrpMembers(packet);
+                    CallTerm callTerm = (CallTerm) proto;
+                    mCallTermSeq = callTerm.getSequence();
+                    mCallTermAudioSeq = callTerm.getAudioSeq();
+                    forwardToGrpMembers(proto);
                     mState = State.HANG;
                     break;
                 default:
                     mLogger.d(TAG, "init: rxed unexp packet:" + proto.toString());
                     break;
             }
+        }
+
+        private boolean validatePacket(DatagramPacket packet){
+            if( packet.getAddress() != mCallInfo.mSenderIpPort.getAddress()
+                    || packet.getPort() != mCallInfo.mSenderIpPort.getPort())
+            {
+                mLogger.d(TAG, "state=" + mState + ", unexp sender:"
+                        + packet.getAddress() + ":" + packet.getPort());
+                return false;
+            }
+
+            ProtocolBase proto = ProtocolFactory.getProtocol(packet);
+            long suid = 0;
+            long tgtid = 0;
+
+            switch( proto.getType()){
+                case ProtocolBase.PTYPE_CALL_INIT:
+                    CallInit callInit = (CallInit) proto;
+                    suid = callInit.getSuid();
+                    tgtid = callInit.getTargetId();
+                    break;
+                case ProtocolBase.PTYPE_CALL_DATA:
+                    CallData callData = (CallData) proto;
+                    suid = callData.getSuid();
+                    tgtid = callData.getTargetId();
+                    break;
+                case ProtocolBase.PTYPE_CALL_TERM:
+                    CallTerm callTerm = (CallTerm) proto;
+                    suid = callTerm.getSuid();
+                    tgtid = callTerm.getTargetId();
+                    break;
+            }
+
+            if( suid != mCallInfo.mSuid || tgtid != mCallInfo.mTargetId ){
+                mLogger.d(TAG, "init: call init for different tgt, src=" + suid + ", target=" + tgtid);
+                return false;
+            }
+            return true;
         }
     }
 
@@ -285,11 +399,13 @@ public class CallProcessor {
         @Override
         public void entry() {
             mLogger.d(TAG, "entry call hang");
+            rearmFlyWheel(GlobalConstants.CALL_HANG_PERIOD);
         }
 
         @Override
         public void exit() {
             mLogger.d(TAG, "exit call hang");
+            cancelFlywheel();
         }
 
         @Override
@@ -300,34 +416,91 @@ public class CallProcessor {
                 return;
             } else if( timerTask == mTimerTask ) {
                 mLogger.i(TAG, "init: timer exp");
-                sendCallInit();
+                sendCallTerm();
                 rearmTxTimer();
             }
         }
 
         @Override
         public void packetReceived(DatagramPacket packet) {
+            if(!validatePacket(packet)){
+                return;
+            }
             ProtocolBase proto = ProtocolFactory.getProtocol(packet);
             short protoType = proto.getType();
             switch(protoType){
                 case ProtocolBase.PTYPE_CALL_INIT:
-                    //TODO: validate call sequence, or start a new call
-                    forwardToGrpMembers(packet);
+                    recordCallInfo((CallInit)proto, packet);
+                    forwardToGrpMembers(proto);
                     mState =  State.INIT;
                     break;
                 case ProtocolBase.PTYPE_CALL_DATA:
-                    forwardToGrpMembers(packet);
-                    rearmFlyWheel();
+                    forwardToGrpMembers(proto);
+                    rearmFlyWheel(GlobalConstants.CALL_HANG_PERIOD);
                     break;
                 case ProtocolBase.PTYPE_CALL_TERM:
-                    forwardToGrpMembers(packet);
+                    CallTerm callTerm = (CallTerm) proto;
+                    mCallTermSeq = callTerm.getSequence();
+                    mCallTermAudioSeq = callTerm.getAudioSeq();
+                    forwardToGrpMembers(proto);
                     rearmTxTimer();
-                    rearmFlyWheel();
                     break;
                 default:
                     mLogger.d(TAG, "hang: rxed unexp packet:" + proto.toString());
                     break;
             }
+        }
+
+        /** rearm tx timer per current elapse time
+         *
+         */
+        private void rearmTxTimer(){
+            mTimerTask = createTimerTask();
+            long timeNow = System.nanoTime();
+            mTimer.schedule(mTimerTask, GlobalConstants.CALL_PACKET_INTERVAL + mLastTime - timeNow);
+        }
+
+        /** only allow callinit from same group
+         *
+         * @param packet
+         * @return
+         */
+        private boolean validatePacket(DatagramPacket packet){
+
+            ProtocolBase proto = ProtocolFactory.getProtocol(packet);
+            switch( proto.getType()){
+                case ProtocolBase.PTYPE_CALL_INIT:
+                    CallInit callInit = (CallInit) proto;
+                    long suid = 0;
+                    long tgtid = 0;
+                    suid = callInit.getSuid();
+                    tgtid = callInit.getTargetId();
+                    if( tgtid != mCallInfo.mTargetId ){
+                        mLogger.d(TAG, "init: call init for different tgt, src=" + suid + ", target=" + tgtid);
+                        return false;
+                    }
+                    break;
+                case ProtocolBase.PTYPE_CALL_DATA:
+                    if( packet.getAddress() != mCallInfo.mSenderIpPort.getAddress()
+                            || packet.getPort() != mCallInfo.mSenderIpPort.getPort())
+                    {
+                        mLogger.d(TAG, "state=" + mState + ", unexp sender:"
+                                + packet.getAddress() + ":" + packet.getPort());
+                        return false;
+                    }
+                    break;
+                case ProtocolBase.PTYPE_CALL_TERM:
+                    if( packet.getAddress() != mCallInfo.mSenderIpPort.getAddress()
+                            || packet.getPort() != mCallInfo.mSenderIpPort.getPort())
+                    {
+                        mLogger.d(TAG, "state=" + mState + ", unexp sender:"
+                                + packet.getAddress() + ":" + packet.getPort());
+                        return false;
+                    }
+                    break;
+            }
+
+            return true;
         }
 
         NamedTimerTask mTimerTask;

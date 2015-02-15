@@ -1,9 +1,7 @@
 package com.bluesky.cloudmontain;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.net.InetSocketAddress;
+import java.util.*;
 
 /**
  * Created by liangc on 08/02/15.
@@ -21,7 +19,6 @@ public class SubscriberDatabase {
 
     private final HashMap<Long, Subscriber> mSubscribers = new HashMap<Long, Subscriber>();
     private final HashMap<Long, Group> mGroups = new HashMap<Long, Group>();
-    private final HashSet<Long> mOnlineSubs = new HashSet<Long>();
 
     public SubscriberDatabase(){
 
@@ -72,15 +69,33 @@ public class SubscriberDatabase {
         mGroups.get(new Long(grp_id)).subs.add(new Long(su_id));
     }
 
-    public void online(long su_id){
-        if(hasSubscriber(su_id)){
-            mOnlineSubs.add(new Long(su_id));
-        }
+    // online methods
+
+    private final HashMap<Long, InetSocketAddress> mOnlineSubs = new HashMap<Long, InetSocketAddress>();
+
+    public void online(long su_id, InetSocketAddress addr){
+        mOnlineSubs.put(new Long(su_id), addr);
     }
 
     public void offline(long su_id){
-        if(hasSubscriber(su_id)){
-            mOnlineSubs.remove(new Long(su_id));
+        mOnlineSubs.remove(new Long(su_id));
+    }
+
+    public class OnlineRecord{
+        public Long su_id;
+        public InetSocketAddress addr;
+    }
+
+    public List<OnlineRecord> getOnlineMembers(long grp_id){
+        List<OnlineRecord> onlineMembers = new LinkedList<OnlineRecord>();
+        Iterator<Long> iter = mGroups.get(new Long(grp_id)).subs.iterator();
+        while(iter.hasNext()){
+            Long suid = iter.next();
+            OnlineRecord record = new OnlineRecord();
+            record.su_id = suid;
+            record.addr = mOnlineSubs.get(suid);
+            onlineMembers.add(record);
         }
+        return onlineMembers;
     }
 }

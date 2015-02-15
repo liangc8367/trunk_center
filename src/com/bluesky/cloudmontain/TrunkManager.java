@@ -39,7 +39,7 @@ public class TrunkManager {
         udpSvcConfig.clientMode = false;
         mUdpService = new UDPService(udpSvcConfig, LOGGER);
 
-        createEchoingCallProcessor();
+        mRepeater = new Repeator(mUdpService);
 
         // register callback
         mRxHandler  = new UdpRxHandler();
@@ -105,13 +105,12 @@ public class TrunkManager {
             // validation
             Ack ack;
             if(mUserDatabase.hasSubscriber(suid)) {
-                // ack
+                mUserDatabase.online(suid, sender);
                 ack = new Ack(true, ByteBuffer.wrap(packet.getData()));
-                LOGGER.i(TAG, "registration from: " + sender + ", unknown subscriber=" + suid);
+                LOGGER.i(TAG, "registration from: " + sender + ", legitimate SU:" + suid);
             } else {
-                mUserDatabase.online(suid);
                 ack = new Ack(false, ByteBuffer.wrap(packet.getData()));
-                LOGGER.i(TAG, "registration from: " + sender + ", legitimate su=" + suid);
+                LOGGER.i(TAG, "registration from: " + sender + ",  unknown SU:" + suid);
             }
             ack.setSequence(++mSeqNumber);
             int size = ack.getSize();
@@ -143,7 +142,7 @@ public class TrunkManager {
                     ProtocolBase proto = ProtocolFactory.getProtocol(packet);
                     CallProcessor cp = findCallProcessor(proto);
                     if(cp!=null){
-
+                        cp.packetReceived(packet);
                     }
                     break;
                 default:
@@ -188,7 +187,7 @@ public class TrunkManager {
 
         CallProcessor cp = mCPs.get(target);
         if(cp == null){
-            cp = new CallProcessor(target, source, LOGGER);
+            cp = new CallProcessor(target, source, mRepeater, mUserDatabase, LOGGER);
             mCPs.put(new Long(target), cp);
         }
         return cp;
@@ -258,6 +257,8 @@ public class TrunkManager {
     private Thread      mThread = null;
     private TrunkMessageProcessor   mProcessor  = null;
     private UdpRxHandler    mRxHandler;
+
+    private Repeator mRepeater;
 
     private EchoingCallProcessor    mCallProcessor;
     private ExecutorService         mCallProcessorExecutor;
