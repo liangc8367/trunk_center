@@ -24,10 +24,11 @@ public class Repeator {
 
         short type = proto.getType();
         for(ListIterator<SubscriberDatabase.OnlineRecord> it = onlineSus.listIterator(); it.hasNext();){
-            if( it.next().su_id != callInfo.mSuid ){
-                mUdpSvc.send(it.next().addr, payload);
+            SubscriberDatabase.OnlineRecord record = it.next();
+            if( record.su_id != callInfo.mSuid ){
+                mUdpSvc.send(record.addr, payload);
             } else if ( type == ProtocolBase.PTYPE_CALL_TERM || type == ProtocolBase.PTYPE_CALL_INIT){
-                mUdpSvc.send(it.next().addr, payload);
+                mUdpSvc.send(record.addr, payload);
             }
         }
     }

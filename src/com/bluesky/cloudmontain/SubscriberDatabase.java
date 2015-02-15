@@ -33,10 +33,12 @@ public class SubscriberDatabase {
     }
 
     public boolean isGroupMember(long su_id, long grp_id){
-        if( hasSubscriber(su_id)){
-            return mSubscribers.get(new Long(grp_id))!=null;
+        Subscriber su = mSubscribers.get(new Long(su_id));
+        if(su == null){
+            return false;
         }
-        return false;
+
+        return su.groups.contains(new Long(grp_id));
     }
 
     public List<Long> getGroupMember(long grp_id){
@@ -94,7 +96,9 @@ public class SubscriberDatabase {
             OnlineRecord record = new OnlineRecord();
             record.su_id = suid;
             record.addr = mOnlineSubs.get(suid);
-            onlineMembers.add(record);
+            if(record.addr != null) {
+                onlineMembers.add(record);
+            }
         }
         return onlineMembers;
     }
