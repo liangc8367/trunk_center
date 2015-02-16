@@ -251,7 +251,11 @@ public class CallProcessor {
         private void rearmTxTimer(){
             mTimerTask = createTimerTask();
             long timeNow = System.nanoTime();
-            mTimer.schedule(mTimerTask, GlobalConstants.CALL_PACKET_INTERVAL + mLastTime - timeNow);
+            long delay = GlobalConstants.CALL_PACKET_INTERVAL + (mLastTime - timeNow) / (1000L * 1000);
+            if( delay < 0){
+                delay = 1;
+            }
+            mTimer.schedule(mTimerTask, delay);
         }
 
         private boolean validatePacket(DatagramPacket packet){
@@ -402,12 +406,17 @@ public class CallProcessor {
         public void entry() {
             mLogger.d(TAG, "entry call hang");
             rearmFlyWheel(GlobalConstants.CALL_HANG_PERIOD);
+            rearmTxTimer();
         }
 
         @Override
         public void exit() {
-            mLogger.d(TAG, "exit call hang");
             cancelFlywheel();
+            if( mTimerTask != null){
+                mTimerTask.cancel();
+                mTimerTask = null;
+            }
+            mLogger.d(TAG, "exit call hang");
         }
 
         @Override
@@ -459,7 +468,11 @@ public class CallProcessor {
         private void rearmTxTimer(){
             mTimerTask = createTimerTask();
             long timeNow = System.nanoTime();
-            mTimer.schedule(mTimerTask, GlobalConstants.CALL_PACKET_INTERVAL + mLastTime - timeNow);
+            long delay = GlobalConstants.CALL_PACKET_INTERVAL + (mLastTime - timeNow) / (1000L * 1000);
+            if( delay < 0){
+                delay = 1;
+            }
+            mTimer.schedule(mTimerTask, delay);
         }
 
         /** only allow callinit from same group
