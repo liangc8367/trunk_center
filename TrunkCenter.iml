@@ -9,6 +9,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="PttAppProtocol" level="project" />
     <orderEntry type="library" name="bluesky_common" level="project" />
+    <orderEntry type="library" name="org.mockito:mockito-core:1.9.0" level="project" />
     <orderEntry type="module-library">
       <library name="JUnit4">
         <CLASSES>

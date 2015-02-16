@@ -83,7 +83,7 @@ public class SubscriberDatabase {
         mOnlineSubs.remove(new Long(su_id));
     }
 
-    public class OnlineRecord{
+    public static class OnlineRecord{
         public Long su_id;
         public InetSocketAddress addr;
     }
