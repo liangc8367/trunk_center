@@ -4,6 +4,7 @@ import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.Timer;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -259,7 +260,7 @@ public class TrunkManager {
     private CallProcessor createCallProcessor(long suid, long target)
     {
         ExecutorService exec = Executors.newSingleThreadExecutor();
-        ThreadedCP cp = new ThreadedCP(exec, target, suid, mRepeater, mUserDatabase,LOGGER);
+        ThreadedCP cp = new ThreadedCP(exec, target, suid, mRepeater, mUserDatabase, mTimer, LOGGER);
         return cp;
     }
 
@@ -277,6 +278,7 @@ public class TrunkManager {
     private EchoingCallProcessor    mCallProcessor;
     private ExecutorService         mCallProcessorExecutor;
     private final SubscriberDatabase mUserDatabase = new SubscriberDatabase();
+    private final Timer mTimer = new Timer("tm");
 
     private final HashMap<Long, CallProcessor> mCPs = new HashMap<Long, CallProcessor>();
     private final HashMap<Long, ExecutorService> mExecs = new HashMap<Long, ExecutorService>();

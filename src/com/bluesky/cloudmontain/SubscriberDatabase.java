@@ -84,6 +84,10 @@ public class SubscriberDatabase {
     }
 
     public static class OnlineRecord{
+        public OnlineRecord(Long su_id, InetSocketAddress addr){
+            this.su_id = su_id;
+            this.addr = addr;
+        }
         public Long su_id;
         public InetSocketAddress addr;
     }
@@ -93,10 +97,9 @@ public class SubscriberDatabase {
         Iterator<Long> iter = mGroups.get(new Long(grp_id)).subs.iterator();
         while(iter.hasNext()){
             Long suid = iter.next();
-            OnlineRecord record = new OnlineRecord();
-            record.su_id = suid;
-            record.addr = mOnlineSubs.get(suid);
-            if(record.addr != null) {
+            InetSocketAddress addr = mOnlineSubs.get(suid);
+            if(addr != null) {
+                OnlineRecord record = new OnlineRecord(suid, addr);
                 onlineMembers.add(record);
             }
         }

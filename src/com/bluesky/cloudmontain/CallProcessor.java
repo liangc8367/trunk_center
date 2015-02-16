@@ -21,11 +21,13 @@ public class CallProcessor {
         public void callEnd();
     }
 
-    public CallProcessor(long grp_id, long su_id, final Repeator rptr,  SubscriberDatabase database, final OLog logger){
+    public CallProcessor(long grp_id, long su_id,
+                         final Repeator rptr,  final SubscriberDatabase database,
+                         final Timer timer, final OLog logger){
         TAG = "CP[" + grp_id + "]";
         mRptr = rptr;
         mLogger = logger;
-        mTimer = new Timer(TAG);
+        mTimer = timer;
         mOnlineSubs = database.getOnlineMembers(grp_id);
         initializeSM();
         mStateNode.entry();
@@ -83,7 +85,7 @@ public class CallProcessor {
      *
      * @param dur
      */
-    private void rearmFlyWheel(int dur){
+    private void rearmFlyWheel(long dur){
         if(mFlywheelTimerTask!=null){
             mFlywheelTimerTask.cancel();
         }
@@ -123,7 +125,7 @@ public class CallProcessor {
 
     List<SubscriberDatabase.OnlineRecord> mOnlineSubs;
     NamedTimerTask mFlywheelTimerTask;
-    Timer mTimer;
+    final Timer mTimer;
     final Repeator mRptr;
     final CallInformation mCallInfo = new CallInformation();
     final OLog mLogger;
