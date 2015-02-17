@@ -481,17 +481,18 @@ public class CallProcessor {
          * @return
          */
         private boolean validatePacket(DatagramPacket packet){
+            long suid = 0;
+            long tgtid = 0;
 
             ProtocolBase proto = ProtocolFactory.getProtocol(packet);
             switch( proto.getType()){
                 case ProtocolBase.PTYPE_CALL_INIT:
                     CallInit callInit = (CallInit) proto;
-                    long suid = 0;
-                    long tgtid = 0;
+
                     suid = callInit.getSuid();
                     tgtid = callInit.getTargetId();
                     if( tgtid != mCallInfo.mTargetId ){
-                        mLogger.d(TAG, "init: call init for different tgt, src=" + suid + ", target=" + tgtid);
+                        mLogger.d(TAG, "hang state: call init for different tgt, src=" + suid + ", target=" + tgtid);
                         return false;
                     }
                     break;
@@ -503,6 +504,13 @@ public class CallProcessor {
                                 + packet.getAddress() + ":" + packet.getPort());
                         return false;
                     }
+                    CallData callData = (CallData) proto;
+                    tgtid = callData.getTargetId();
+                    suid = callData.getSuid();
+                    if( tgtid != mCallInfo.mTargetId || suid != mCallInfo.mSuid){
+                        mLogger.d(TAG, "init: call init for different tgt, src=" + suid + ", target=" + tgtid);
+                        return false;
+                    }
                     break;
                 case ProtocolBase.PTYPE_CALL_TERM:
                     if( packet.getAddress() != mCallInfo.mSenderIpPort.getAddress()
@@ -510,6 +518,13 @@ public class CallProcessor {
                     {
                         mLogger.d(TAG, "state=" + mState + ", unexp sender:"
                                 + packet.getAddress() + ":" + packet.getPort());
+                        return false;
+                    }
+                    CallTerm callTerm = (CallTerm) proto;
+                    tgtid = callTerm.getTargetId();
+                    suid = callTerm.getSuid();
+                    if( tgtid != mCallInfo.mTargetId || suid != mCallInfo.mSuid){
+                        mLogger.d(TAG, "hang state: call term for different tgt, src=" + suid + ", target=" + tgtid);
                         return false;
                     }
                     break;
