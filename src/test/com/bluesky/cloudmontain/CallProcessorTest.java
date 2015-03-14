@@ -1,16 +1,14 @@
 package test.com.bluesky.cloudmontain; 
 
-import com.bluesky.cloudmontain.CallProcessor;
-import com.bluesky.cloudmontain.Repeator;
-import com.bluesky.cloudmontain.SubscriberDatabase;
+import com.bluesky.cloudmontain.repeator.CallProcessor;
+import com.bluesky.cloudmontain.repeator.Repeator;
+import com.bluesky.cloudmontain.database.SubscriberDatabase;
 import com.bluesky.common.*;
 import com.bluesky.protocol.CallData;
 import com.bluesky.protocol.CallInit;
 import com.bluesky.protocol.CallTerm;
 import com.bluesky.protocol.ProtocolBase;
 import org.junit.Test;
-import org.junit.Before; 
-import org.junit.After;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -23,10 +21,8 @@ import static org.mockito.Mockito.*;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Timer;
-import java.util.List;
 
 /** 
 * CallProcessor Tester. 
@@ -76,7 +72,7 @@ public class CallProcessorTest {
 
    private void rxedCallInit(long target, long src, InetSocketAddress addr){
 
-      CallInit callInit = new CallInit(target, src);
+      CallInit callInit = new CallInit(target, src, (short)0);
       ByteBuffer payload = ByteBuffer.allocate(callInit.getSize());
       callInit.serialize(payload);
       DatagramPacket pkt = new DatagramPacket(payload.array(), payload.capacity());

@@ -1,11 +1,11 @@
-package com.bluesky.cloudmontain;
+package com.bluesky.cloudmontain.main;
+
+import com.bluesky.cloudmontain.repeator.TrunkManager;
 
 import java.lang.Thread;
-import java.net.DatagramSocket;
-import java.net.DatagramPacket;
 
 /**
- * Trunk Center, the repeater for PTTApp, responsible for
+ * Trunk Center, the repeator for PTTApp, responsible for
  *  - registration
  *  - call management
  *      + call validation

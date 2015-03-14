@@ -1,5 +1,6 @@
-package com.bluesky.cloudmontain;
+package com.bluesky.cloudmontain.repeator;
 
+import com.bluesky.cloudmontain.database.SubscriberDatabase;
 import com.bluesky.common.CallInformation;
 import com.bluesky.common.UDPService;
 import com.bluesky.protocol.ProtocolBase;
@@ -25,7 +26,7 @@ public class Repeator {
         short type = proto.getType();
         for(ListIterator<SubscriberDatabase.OnlineRecord> it = onlineSus.listIterator(); it.hasNext();){
             SubscriberDatabase.OnlineRecord record = it.next();
-            if( record.su_id != callInfo.mSuid ){
+            if( record.su_id != callInfo.mSourceId ){
                 mUdpSvc.send(record.addr, payload);
             } else if ( type == ProtocolBase.PTYPE_CALL_TERM || type == ProtocolBase.PTYPE_CALL_INIT){
                 mUdpSvc.send(record.addr, payload);

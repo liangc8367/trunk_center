@@ -1,4 +1,4 @@
-package com.bluesky.cloudmontain;
+package com.bluesky.cloudmontain.repeator;
 
 import com.bluesky.common.CallInformation;
 import com.bluesky.common.GlobalConstants;
@@ -220,7 +220,7 @@ public class EchoingCallProcessor {
             mTimer.schedule(mTimerTask, GlobalConstants.CALL_HANG_PERIOD);
 
             mRandomTxTimerTask = createTimerTask();
-            mTimer.schedule(mRandomTxTimerTask, (new Random()).nextInt(GlobalConstants.CALL_HANG_PERIOD + 1));
+            mTimer.schedule(mRandomTxTimerTask, (new Random()).nextInt((int)GlobalConstants.CALL_HANG_PERIOD + 1));
         }
 //        private void rearmTimer(){
 //            mTimerTask.cancel();
@@ -259,17 +259,17 @@ public class EchoingCallProcessor {
                         }
                         break;
                     case TX_DATA:
-                        if (sendCallData(mTxCount)) {
+                        if (sendCallData()) {
                         } else {
                             LOGGER.info(TAG + "sent " + mTxCount + " audio data packets");
                             mTxStep = TX_TERM;
-                            sendCallTerm(mTxCount);
+                            sendCallTerm();
                             ++mTxTermCount;
                         }
                         ++mTxCount;
                         break;
                     case TX_TERM:
-                        sendCallTerm(mTxCount);
+                        sendCallTerm();
                         ++mTxCount;
                         ++mTxTermCount;
                         if (mTxTermCount >= GlobalConstants.CALL_TERM_NUMBER) {
@@ -367,14 +367,14 @@ public class EchoingCallProcessor {
     }
 
     private void recordCallInfo(DatagramPacket packet){
-        short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
-        if(protoType == ProtocolBase.PTYPE_CALL_INIT){
-            CallInit callInit = (CallInit) ProtocolFactory.getProtocol(packet);
+        ProtocolBase proto = ProtocolFactory.getProtocol(packet);
+        if(proto.getType() == ProtocolBase.PTYPE_CALL_INIT){
+            CallInit callInit = (CallInit) proto;
             mCallInfo   = new CallInformation();
             mCallInfo.mSenderIpPort = new InetSocketAddress(packet.getAddress(), packet.getPort());
             mCallInfo.mSequence = callInit.getSequence();
-            mCallInfo.mSuid = callInit.getSuid();
-            mCallInfo.mTargetId = callInit.getTargetId();
+            mCallInfo.mSourceId = callInit.getSource();
+            mCallInfo.mTargetId = callInit.getTarget();
 
             try {
                 mOutStream = new BufferedOutputStream(new FileOutputStream(AUDIO_FILE_NAME));
@@ -415,8 +415,7 @@ public class EchoingCallProcessor {
 
     private void sendCallInit(){
         mTxSeq = (short) (new Random()).nextInt();
-        CallInit preamble = new CallInit(mCallInfo.mTargetId, GlobalConstants.SUID_TRUNK_MANAGER);
-        preamble.setSequence(++mTxSeq);
+        CallInit preamble = new CallInit(mCallInfo.mTargetId, GlobalConstants.SUID_TRUNK_MANAGER, ++mTxSeq);
         ByteBuffer payload = ByteBuffer.allocate(preamble.getSize());
         preamble.serialize(payload);
         mUdpService.send(mCallInfo.mSenderIpPort, payload);
@@ -435,7 +434,7 @@ public class EchoingCallProcessor {
      *
      * @return true if not EOF
      */
-    private boolean sendCallData(short audioSeq){
+    private boolean sendCallData(){
         byte[] buffer = new byte[GlobalConstants.COMPRESSED_20MS_AUDIO_SIZE];
         int sz;
         try{
@@ -453,9 +452,8 @@ public class EchoingCallProcessor {
         CallData callData = new CallData(
                 mCallInfo.mTargetId,
                 GlobalConstants.SUID_TRUNK_MANAGER,
-                audioSeq,
+                ++mTxSeq,
                 ByteBuffer.wrap(buffer, 0, sz));
-        callData.setSequence(++mTxSeq);
         ByteBuffer payload = ByteBuffer.allocate(callData.getSize());
         callData.serialize(payload);
         mUdpService.send(mCallInfo.mSenderIpPort, payload);
@@ -463,7 +461,7 @@ public class EchoingCallProcessor {
         return true;
     }
 
-    private void sendCallTerm(short audioSeq){
+    private void sendCallTerm(){
         if( mInStream != null) {
             try {
                 mInStream.close();
@@ -475,16 +473,13 @@ public class EchoingCallProcessor {
         CallTerm callTerm = new CallTerm(
                 mCallInfo.mTargetId,
                 GlobalConstants.SUID_TRUNK_MANAGER,
-                audioSeq
+                ++mTxSeq
         );
-        callTerm.setSequence(++mTxSeq);
         ByteBuffer payload = ByteBuffer.allocate(callTerm.getSize());
         callTerm.serialize(payload);
         mUdpService.send(mCallInfo.mSenderIpPort, payload);
 
     }
-
-
 
     private void initializeStateMachine(){
         mStateMap = new EnumMap<State, StateNode>(State.class);

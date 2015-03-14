@@ -1,5 +1,6 @@
-package com.bluesky.cloudmontain;
+package com.bluesky.cloudmontain.repeator;
 
+import com.bluesky.cloudmontain.database.SubscriberDatabase;
 import com.bluesky.common.NamedTimerTask;
 import com.bluesky.common.OLog;
 
@@ -10,7 +11,7 @@ import java.util.concurrent.ExecutorService;
 /** call processor, running in dedicated thread context
  * Created by liangc on 14/02/15.
  */
-public class ThreadedCP extends CallProcessor{
+public class ThreadedCP extends CallProcessor {
     public ThreadedCP(ExecutorService exec, long grp_id, long su_id,
                       final Repeator rptr,  final SubscriberDatabase database,
                       final Timer timer, final OLog logger){

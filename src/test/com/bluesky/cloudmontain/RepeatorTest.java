@@ -1,7 +1,7 @@
 package test.com.bluesky.cloudmontain; 
 
-import com.bluesky.cloudmontain.Repeator;
-import com.bluesky.cloudmontain.SubscriberDatabase;
+import com.bluesky.cloudmontain.repeator.Repeator;
+import com.bluesky.cloudmontain.database.SubscriberDatabase;
 import com.bluesky.common.CallInformation;
 import com.bluesky.common.UDPService;
 import com.bluesky.protocol.CallData;
@@ -60,10 +60,11 @@ public void repeatTest1() {
     //
     Repeator rptr = new Repeator(udpSvcMock);
     CallInformation callInfo = new CallInformation();
-    callInfo.mSuid = su2;
+    callInfo.mSourceId = su2;
 
+    short seq = 1100;
     // test CallInit/CallTerm
-    CallInit callInit = new CallInit(grp, su2);
+    CallInit callInit = new CallInit(grp, su2, seq);
     rptr.repeat(onlines, callInfo, callInit);
 
     Mockito.verify(udpSvcMock, times(1)).send(eq(addr1), any(ByteBuffer.class));

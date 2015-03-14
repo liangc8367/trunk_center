@@ -1,4 +1,4 @@
-package com.bluesky.cloudmontain;
+package com.bluesky.cloudmontain.database;
 
 import java.net.InetSocketAddress;
 import java.util.*;

@@ -1,4 +1,4 @@
-package com.bluesky.cloudmontain;
+package com.bluesky.cloudmontain.repeator;
 
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
@@ -9,8 +9,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.logging.Logger;
 
+import com.bluesky.cloudmontain.database.SubscriberDatabase;
 import com.bluesky.common.*;
 import com.bluesky.protocol.*;
 
@@ -101,19 +101,19 @@ public class TrunkManager {
         private void handleRegistration(DatagramPacket packet){
             InetSocketAddress sender = new InetSocketAddress(packet.getAddress(), packet.getPort());
             Registration reg = (Registration)ProtocolFactory.getProtocol(packet);
-            long suid = reg.getSUID();
+            long suid = reg.getSource();
+            LOGGER.i(TAG, "registration from: " + sender + ", legitimate SU:" + suid);
 
             // validation
             Ack ack;
+            boolean legitimateSu = false;
             if(mUserDatabase.hasSubscriber(suid)) {
+                legitimateSu = true;
                 mUserDatabase.online(suid, sender);
-                ack = new Ack(true, ByteBuffer.wrap(packet.getData()));
-                LOGGER.i(TAG, "registration from: " + sender + ", legitimate SU:" + suid);
-            } else {
-                ack = new Ack(false, ByteBuffer.wrap(packet.getData()));
-                LOGGER.i(TAG, "registration from: " + sender + ",  unknown SU:" + suid);
+            }else{
+                LOGGER.i(TAG, "illegitimate su: " + suid);
             }
-            ack.setSequence(++mSeqNumber);
+            ack = new Ack(suid, GlobalConstants.SUID_TRUNK_MANAGER, ++mSeqNumber, legitimateSu, reg);
             int size = ack.getSize();
             ByteBuffer payload = ByteBuffer.allocate(size);
             ack.serialize(payload);
@@ -124,15 +124,15 @@ public class TrunkManager {
     private class UdpRxHandler implements UDPService.CompletionHandler {
         @Override
         public void completed(DatagramPacket packet){
+            ProtocolBase proto = ProtocolFactory.getProtocol(packet);
+            LOGGER.d(TAG, "rxed:" + proto);
 
-            LOGGER.d(TAG, ProtocolHelpers.peepProtocol(packet));
-            short protoType = ProtocolBase.peepType(ByteBuffer.wrap(packet.getData()));
-            switch (protoType) {
+            switch (proto.getType()) {
                 case ProtocolBase.PTYPE_REGISTRATION:
 
                     TrunkManagerMessage msg = new TrunkManagerMessage(TrunkManagerMessage.MSG_RXED_PACKET, packet);
                     try {
-                        mMsgQueue.put(msg); //<== may be blocked if we use cap-limited queue.
+                        mMsgQueue.put(msg);
                     } catch (Exception e) {
                         LOGGER.w(TAG, "exp: " + e);
                     }
@@ -140,7 +140,6 @@ public class TrunkManager {
                 case ProtocolBase.PTYPE_CALL_INIT:
                 case ProtocolBase.PTYPE_CALL_DATA:
                 case ProtocolBase.PTYPE_CALL_TERM:
-                    ProtocolBase proto = ProtocolFactory.getProtocol(packet);
                     CallProcessor cp = findCallProcessor(proto);
                     if(cp!=null){
                         cp.packetReceived(packet);
@@ -149,48 +148,23 @@ public class TrunkManager {
                 default:
                     break;
             }
-//            EchoingCallProcessor.EvRxedPacket event = mCallProcessor.new EvRxedPacket(packet);
-//            mCallProcessorExecutor.execute(event);
         }
     }
 
     private CallProcessor findCallProcessor(ProtocolBase proto){
-        short protoType = proto.getType();
-        long source = 0, target =0;
-        switch( protoType ){
-            case ProtocolBase.PTYPE_CALL_INIT:
-                CallInit callInit = (CallInit) proto;
-                source = callInit.getSuid();
-                target = callInit.getTargetId();
-                break;
-            case ProtocolBase.PTYPE_CALL_DATA:
-                CallData callData = (CallData) proto;
-                source = callData.getSuid();
-                target = callData.getTargetId();
-                break;
-            case ProtocolBase.PTYPE_CALL_TERM:
-                CallTerm callTerm = (CallTerm)proto;
-                source = callTerm.getSuid();
-                target = callTerm.getTargetId();
-                break;
-            default:
-                break;
-        }
-        if( source == 0){
-            LOGGER.d(TAG, "invalid packet(type = " + protoType + ", or source (id=" + source +")");
+        if( !mUserDatabase.isGroupMember(proto.getSource(), proto.getTarget())){
+            LOGGER.d(TAG, "illegal call attempt from " + proto.getSource() + " to " + proto.getTarget());
             return null;
         }
 
-        if( !mUserDatabase.isGroupMember(source, target)){
-            LOGGER.d(TAG, "illegal call attemp from " + source + " to " + target);
-            return null;
-        }
-
-        CallProcessor cp = mCPs.get(target);
+        CallProcessor cp = mCPs.get(proto.getTarget());
         if(cp == null){
-//            cp = new CallProcessor(target, source, mRepeater, mUserDatabase, LOGGER);
-            cp = createCallProcessor(target, source);
-            mCPs.put(new Long(target), cp);
+            cp = createCallProcessor(proto.getTarget(), proto.getSource());
+            if( cp != null) {
+                mCPs.put(new Long(proto.getTarget()), cp);
+            } else {
+                LOGGER.w(TAG, "failed to create cp for target " + proto.getTarget());
+            }
         }
         return cp;
     }
@@ -221,12 +195,6 @@ public class TrunkManager {
         public static final int MSG_RXED_PACKET = 1;
     }
 
-
-    private void createEchoingCallProcessor(){
-        mCallProcessorExecutor = Executors.newSingleThreadExecutor();
-        mCallProcessor  = new EchoingCallProcessor(mCallProcessorExecutor, mUdpService);
-    }
-
     private void initSubDatabase(){
         for(long i=2; i<10; i++) {
             mUserDatabase.addSubscriber(i);
@@ -249,7 +217,7 @@ public class TrunkManager {
         mUserDatabase.signup(5, 0x903);
     }
 
-    /** create callprocessor, and its executor service.
+    /** create repeator, and its executor service.
      *      it's not possible to use threadpool, because we have to ensure all methods of
      *      a cp has to be run in the same thread context, as a way to eliminate race
      *      condition. I may consider to create a ExecuteService pool in future.
@@ -275,7 +243,6 @@ public class TrunkManager {
 
     private Repeator mRepeater;
 
-    private EchoingCallProcessor    mCallProcessor;
     private ExecutorService         mCallProcessorExecutor;
     private final SubscriberDatabase mUserDatabase = new SubscriberDatabase();
     private final Timer mTimer = new Timer("tm");

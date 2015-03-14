@@ -1,6 +1,6 @@
 package test.com.bluesky.cloudmontain; 
 
-import com.bluesky.cloudmontain.SubscriberDatabase;
+import com.bluesky.cloudmontain.database.SubscriberDatabase;
 import org.junit.Test;
 import org.junit.Before; 
 import org.junit.After;
@@ -26,8 +26,16 @@ public void before() throws Exception {
 
 @After
 public void after() throws Exception { 
-} 
+}
 
+    /** sanity test
+     *
+     *          grp1(900),      grp2(902)
+     *  su1(11)   Y                 Y
+     *  su2(22)   Y
+     *
+     * @throws Exception
+     */
 @Test
 public void testSanity() throws Exception {
     SubscriberDatabase database = new SubscriberDatabase();
@@ -137,6 +145,7 @@ public void testSanity() throws Exception {
     assertFalse(hasSu1);
     assertTrue(hasSu2);
 
+    hasSu1 = hasSu2 = false;
     list = database.getOnlineMembers(grp2);
     for(ListIterator<SubscriberDatabase.OnlineRecord> it = list.listIterator(); it.hasNext();){
         SubscriberDatabase.OnlineRecord record = it.next();
@@ -151,106 +160,6 @@ public void testSanity() throws Exception {
     assertFalse(hasSu1);
     assertFalse(hasSu2);
 }
-
-///**
-//*
-//* Method: hasSubscriber(long su_id)
-//*
-//*/
-//@Test
-//public void testHasSubscriber() throws Exception {
-////TODO: Test goes here...
-//}
-//
-///**
-//*
-//* Method: hasGroup(long grp_id)
-//*
-//*/
-//@Test
-//public void testHasGroup() throws Exception {
-////TODO: Test goes here...
-//}
-//
-///**
-//*
-//* Method: isGroupMember(long su_id, long grp_id)
-//*
-//*/
-//@Test
-//public void testIsGroupMember() throws Exception {
-////TODO: Test goes here...
-//}
-//
-///**
-//*
-//* Method: getGroupMember(long grp_id)
-//*
-//*/
-//@Test
-//public void testGetGroupMember() throws Exception {
-////TODO: Test goes here...
-//}
-//
-///**
-//*
-//* Method: addSubscriber(long su_id)
-//*
-//*/
-//@Test
-//public void testAddSubscriber() throws Exception {
-////TODO: Test goes here...
-//}
-//
-///**
-//*
-//* Method: addGroup(long grp_id)
-//*
-//*/
-//@Test
-//public void testAddGroup() throws Exception {
-////TODO: Test goes here...
-//}
-//
-///**
-//*
-//* Method: signup(long su_id, long grp_id)
-//*
-//*/
-//@Test
-//public void testSignup() throws Exception {
-////TODO: Test goes here...
-//}
-//
-///**
-//*
-//* Method: online(long su_id, InetSocketAddress addr)
-//*
-//*/
-//@Test
-//public void testOnline() throws Exception {
-////TODO: Test goes here...
-//}
-//
-///**
-//*
-//* Method: offline(long su_id)
-//*
-//*/
-//@Test
-//public void testOffline() throws Exception {
-////TODO: Test goes here...
-//}
-//
-///**
-//*
-//* Method: getOnlineMembers(long grp_id)
-//*
-//*/
-//@Test
-//public void testGetOnlineMembers() throws Exception {
-////TODO: Test goes here...
-//}
 
 
 } 
