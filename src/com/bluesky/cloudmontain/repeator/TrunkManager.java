@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 
-import com.bluesky.cloudmontain.database.SubscriberDatabase;
+import com.bluesky.common.SubscriberDatabase;
 import com.bluesky.common.*;
 import com.bluesky.protocol.*;
 

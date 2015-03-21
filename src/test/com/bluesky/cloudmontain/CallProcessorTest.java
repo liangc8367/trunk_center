@@ -2,7 +2,7 @@ package test.com.bluesky.cloudmontain;
 
 import com.bluesky.cloudmontain.repeator.CallProcessor;
 import com.bluesky.cloudmontain.repeator.Repeator;
-import com.bluesky.cloudmontain.database.SubscriberDatabase;
+import com.bluesky.common.SubscriberDatabase;
 import com.bluesky.common.*;
 import com.bluesky.protocol.CallData;
 import com.bluesky.protocol.CallInit;

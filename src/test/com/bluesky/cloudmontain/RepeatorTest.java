@@ -1,7 +1,7 @@
 package test.com.bluesky.cloudmontain; 
 
 import com.bluesky.cloudmontain.repeator.Repeator;
-import com.bluesky.cloudmontain.database.SubscriberDatabase;
+import com.bluesky.common.SubscriberDatabase;
 import com.bluesky.common.CallInformation;
 import com.bluesky.common.UDPService;
 import com.bluesky.protocol.CallData;

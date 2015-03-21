@@ -6,7 +6,7 @@ import java.util.*;
 /**
  * Created by liangc on 08/02/15.
  */
-public class SubscriberDatabase {
+public class SubscriberDatabase_old {
     private static class Subscriber {
         public long su_id = 0;
         public final HashSet<Long> groups = new HashSet<Long>();
@@ -20,7 +20,7 @@ public class SubscriberDatabase {
     private final HashMap<Long, Subscriber> mSubscribers = new HashMap<Long, Subscriber>();
     private final HashMap<Long, Group> mGroups = new HashMap<Long, Group>();
 
-    public SubscriberDatabase(){
+    public SubscriberDatabase_old(){
 
     }
 

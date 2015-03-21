@@ -1,6 +1,6 @@
 package test.com.bluesky.cloudmontain; 
 
-import com.bluesky.cloudmontain.database.SubscriberDatabase;
+import com.bluesky.cloudmontain.database.SubscriberDatabase_old;
 import org.junit.Test;
 import org.junit.Before; 
 import org.junit.After;
@@ -18,7 +18,7 @@ import static org.junit.Assert.*;
 * @since <pre>Feb 15, 2015</pre> 
 * @version 1.0 
 */ 
-public class SubscriberDatabaseTest { 
+public class SubscriberDatabaseOldTest {
 
 @Before
 public void before() throws Exception { 
@@ -38,7 +38,7 @@ public void after() throws Exception {
      */
 @Test
 public void testSanity() throws Exception {
-    SubscriberDatabase database = new SubscriberDatabase();
+    SubscriberDatabase_old database = new SubscriberDatabase_old();
     long su1 = 11;
     assertFalse(database.hasSubscriber(su1));
     database.addSubscriber(su1);
@@ -69,9 +69,9 @@ public void testSanity() throws Exception {
 
     boolean hasSu1, hasSu2;
     hasSu1 = hasSu2 = false;
-    List<SubscriberDatabase.OnlineRecord> list = database.getOnlineMembers(grp1);
-    for(ListIterator<SubscriberDatabase.OnlineRecord> it = list.listIterator(); it.hasNext();){
-        SubscriberDatabase.OnlineRecord record = it.next();
+    List<SubscriberDatabase_old.OnlineRecord> list = database.getOnlineMembers(grp1);
+    for(ListIterator<SubscriberDatabase_old.OnlineRecord> it = list.listIterator(); it.hasNext();){
+        SubscriberDatabase_old.OnlineRecord record = it.next();
         if(record.su_id == su1 && record.addr == addr1){
             hasSu1 = true;
         }
@@ -84,8 +84,8 @@ public void testSanity() throws Exception {
     assertFalse(hasSu2);
 
     list = database.getOnlineMembers(grp2);
-    for(ListIterator<SubscriberDatabase.OnlineRecord> it = list.listIterator(); it.hasNext();){
-        SubscriberDatabase.OnlineRecord record = it.next();
+    for(ListIterator<SubscriberDatabase_old.OnlineRecord> it = list.listIterator(); it.hasNext();){
+        SubscriberDatabase_old.OnlineRecord record = it.next();
         if(record.su_id == su1 && record.addr == addr1){
             hasSu1 = true;
         }
@@ -100,8 +100,8 @@ public void testSanity() throws Exception {
     database.online(su2, addr2);
     hasSu1 = hasSu2 = false;
     list = database.getOnlineMembers(grp1);
-    for(ListIterator<SubscriberDatabase.OnlineRecord> it = list.listIterator(); it.hasNext();){
-        SubscriberDatabase.OnlineRecord record = it.next();
+    for(ListIterator<SubscriberDatabase_old.OnlineRecord> it = list.listIterator(); it.hasNext();){
+        SubscriberDatabase_old.OnlineRecord record = it.next();
         if(record.su_id == su1 && record.addr == addr1){
             hasSu1 = true;
         }
@@ -114,8 +114,8 @@ public void testSanity() throws Exception {
 
     hasSu1 = hasSu2 = false;
     list = database.getOnlineMembers(grp2);
-    for(ListIterator<SubscriberDatabase.OnlineRecord> it = list.listIterator(); it.hasNext();){
-        SubscriberDatabase.OnlineRecord record = it.next();
+    for(ListIterator<SubscriberDatabase_old.OnlineRecord> it = list.listIterator(); it.hasNext();){
+        SubscriberDatabase_old.OnlineRecord record = it.next();
         if(record.su_id == su1 && record.addr == addr1){
             hasSu1 = true;
         }
@@ -132,8 +132,8 @@ public void testSanity() throws Exception {
 
     hasSu1 = hasSu2 = false;
     list = database.getOnlineMembers(grp1);
-    for(ListIterator<SubscriberDatabase.OnlineRecord> it = list.listIterator(); it.hasNext();){
-        SubscriberDatabase.OnlineRecord record = it.next();
+    for(ListIterator<SubscriberDatabase_old.OnlineRecord> it = list.listIterator(); it.hasNext();){
+        SubscriberDatabase_old.OnlineRecord record = it.next();
         if(record.su_id == su1 && record.addr == addr1){
             hasSu1 = true;
         }
@@ -147,8 +147,8 @@ public void testSanity() throws Exception {
 
     hasSu1 = hasSu2 = false;
     list = database.getOnlineMembers(grp2);
-    for(ListIterator<SubscriberDatabase.OnlineRecord> it = list.listIterator(); it.hasNext();){
-        SubscriberDatabase.OnlineRecord record = it.next();
+    for(ListIterator<SubscriberDatabase_old.OnlineRecord> it = list.listIterator(); it.hasNext();){
+        SubscriberDatabase_old.OnlineRecord record = it.next();
         if(record.su_id == su1 && record.addr == addr1){
             hasSu1 = true;
         }

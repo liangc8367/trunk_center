@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="subscriber_database:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/subscriber_database_jar</output-path>
+    <root id="archive" name="subscriber_database.jar">
+      <element id="module-output" name="subscriber_database" />
+    </root>
+  </artifact>
+</component>
