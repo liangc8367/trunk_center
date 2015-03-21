@@ -1,0 +1,14 @@
+{
+  "_comment" : "definition of all groups and subscribers in system",
+  "groups" : [
+    { "name": "group1", "id" : 1000 },
+    { "name": "group2", "id" : 2000 },
+    { "name": "group3", "id" : 3000 },
+    { "name": "group4", "id" : 4000 }
+  ],
+  "subscribers" : [
+    { "name": "sub1", "id" : 100, "belongs" : [1000, 3000]},
+    { "name": "sub2", "id" : 200, "belongs" : [2000, 3000, 1000]},
+    { "name": "sub3", "id" : 300, "belongs" : [1000, 2000]}
+  ]
+}

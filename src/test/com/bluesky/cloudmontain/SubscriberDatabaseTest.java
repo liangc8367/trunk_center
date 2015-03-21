@@ -18,7 +18,7 @@ import static org.junit.Assert.*;
 * @since <pre>Feb 15, 2015</pre> 
 * @version 1.0 
 */ 
-public class SubscriberDatabaseOldTest {
+public class SubscriberDatabaseTest {
 
 @Before
 public void before() throws Exception { 
