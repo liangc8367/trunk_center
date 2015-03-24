@@ -194,28 +194,6 @@ public class TrunkManager {
         public static final int MSG_RXED_PACKET = 1;
     }
 
-//    private void initSubDatabase(){
-//        for(long i=2; i<10; i++) {
-//            mUserDatabase.addSubscriber(i);
-//        }
-//        for(long i=0x900; i< 0x905; i++){
-//            mUserDatabase.addGroup(i);
-//        }
-//
-//        for(long i=2; i<10; i++) {
-//            mUserDatabase.signup(i, 0x900);
-//        }
-//
-//        mUserDatabase.signup(4, 0x901);
-//        mUserDatabase.signup(6, 0x901);
-//        mUserDatabase.signup(8, 0x901);
-//        mUserDatabase.signup(3, 0x092);
-//        mUserDatabase.signup(5, 0x092);
-//        mUserDatabase.signup(3, 0x093);
-//        mUserDatabase.signup(4, 0x903);
-//        mUserDatabase.signup(5, 0x903);
-//    }
-
     /** create repeator, and its executor service.
      *      it's not possible to use threadpool, because we have to ensure all methods of
      *      a cp has to be run in the same thread context, as a way to eliminate race
@@ -224,7 +202,7 @@ public class TrunkManager {
      * @param target
      * @return
      */
-    private CallProcessor createCallProcessor(long suid, long target)
+    private CallProcessor createCallProcessor(long target, long suid)
     {
         ExecutorService exec = Executors.newSingleThreadExecutor();
         ThreadedCP cp = new ThreadedCP(exec, target, suid, mRepeater, mUserDatabase, mTimer, LOGGER);

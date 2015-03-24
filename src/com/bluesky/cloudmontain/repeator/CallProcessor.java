@@ -255,11 +255,13 @@ public class CallProcessor {
         }
 
         private boolean validatePacket(DatagramPacket packet){
-            if( packet.getAddress() != mCallInfo.mSenderIpPort.getAddress()
+            if( !packet.getAddress().equals(mCallInfo.mSenderIpPort.getAddress())
                     || packet.getPort() != mCallInfo.mSenderIpPort.getPort())
             {
-                mLogger.d(TAG, "state=" + mState + ", unexp sender:"
-                        + packet.getAddress() + ":" + packet.getPort());
+                mLogger.d(TAG, "state=" + mState +
+                        ", unexp sender:" + packet.getAddress() + ":" + packet.getPort() +
+                        ", (exp:" + mCallInfo.mSenderIpPort.getAddress() + ":" + mCallInfo.mSenderIpPort.getPort()
+                );
                 return false;
             }
 
@@ -331,11 +333,13 @@ public class CallProcessor {
         }
 
         private boolean validatePacket(DatagramPacket packet){
-            if( packet.getAddress() != mCallInfo.mSenderIpPort.getAddress()
+            if( !packet.getAddress().equals(mCallInfo.mSenderIpPort.getAddress())
                     || packet.getPort() != mCallInfo.mSenderIpPort.getPort())
             {
-                mLogger.d(TAG, "state=" + mState + ", unexp sender:"
-                        + packet.getAddress() + ":" + packet.getPort());
+                mLogger.d(TAG, "state=" + mState +
+                        ", unexp sender:" + packet.getAddress() + ":" + packet.getPort() +
+                        ", (exp:" + mCallInfo.mSenderIpPort.getAddress() + ":" + mCallInfo.mSenderIpPort.getPort()
+                );
                 return false;
             }
 
@@ -450,11 +454,13 @@ public class CallProcessor {
                     break;
                 case ProtocolBase.PTYPE_CALL_DATA:
                 case ProtocolBase.PTYPE_CALL_TERM:
-                    if( packet.getAddress() != mCallInfo.mSenderIpPort.getAddress()
+                    if( !packet.getAddress().equals(mCallInfo.mSenderIpPort.getAddress())
                             || packet.getPort() != mCallInfo.mSenderIpPort.getPort())
                     {
-                        mLogger.d(TAG, "state=" + mState + ", unexp sender:"
-                                + packet.getAddress() + ":" + packet.getPort());
+                        mLogger.d(TAG, "state=" + mState +
+                            ", unexp sender:" + packet.getAddress() + ":" + packet.getPort() +
+                            ", (exp:" + mCallInfo.mSenderIpPort.getAddress() + ":" + mCallInfo.mSenderIpPort.getPort()
+                        );
                         break;
                     }
                     if( tgtid != mCallInfo.mTargetId || suid != mCallInfo.mSourceId){
