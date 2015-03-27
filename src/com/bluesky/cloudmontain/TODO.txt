@@ -12,3 +12,8 @@ Known Issues:
 DONE:
 - timer sequence (done)
 
+======
+- redesign CP, using the ideas from sub design. (repeater callTerm time shall based on first rxed packet, and sequence
+  number;
+
+

@@ -75,7 +75,7 @@ public void repeatTest1() {
     // code smell
     Mockito.reset(udpSvcMock);
 
-    CallTerm callTerm = new CallTerm(grp, su2, (short)0);
+    CallTerm callTerm = new CallTerm(grp, su2, (short)0, (short)20);
     rptr.repeat(onlines, callInfo, callTerm);
     Mockito.verify(udpSvcMock, times(1)).send(eq(addr1), any(ByteBuffer.class));
     Mockito.verify(udpSvcMock, times(1)).send(eq(addr2), any(ByteBuffer.class));

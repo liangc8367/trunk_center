@@ -111,13 +111,15 @@ public class CallProcessor {
      *
      */
     private void sendCallTerm(){
-        CallTerm callTerm = new CallTerm(mCallInfo.mTargetId, mCallInfo.mSourceId, ++mCallTermAudioSeq);
+        CallTerm callTerm = new CallTerm(mCallInfo.mTargetId, mCallInfo.mSourceId,
+                ++mCallTermAudioSeq, --mCallHangCountdown);
         forwardToGrpMembers(callTerm);
     }
 
 
     ////////////////////////////// private members ////////////////////////////
     short mCallInitSeq, mCallTermSeq, mCallTermAudioSeq;
+    short mCallHangCountdown;
     long mLastTime;
     protected int mTimerSeed = 0;
 
@@ -232,7 +234,6 @@ public class CallProcessor {
                     break;
                 case ProtocolBase.PTYPE_CALL_TERM:
                     mCallTermSeq = proto.getSequence();
-                    forwardToGrpMembers(proto);
                     mState = State.HANG;
                     break;
                 default:
@@ -323,7 +324,6 @@ public class CallProcessor {
                     break;
                 case ProtocolBase.PTYPE_CALL_TERM:
                     mCallTermSeq = proto.getSequence();
-                    forwardToGrpMembers(proto);
                     mState = State.HANG;
                     break;
                 default:
@@ -356,9 +356,9 @@ public class CallProcessor {
     }
 
     /** call hang state
-     *  - repeat caller's calldata/callterm
+     *  - repeat caller's calldata, but drop its callterm
      *  - for call init, go to call init
-     *  - for call hang timeout, fall to idle
+     *  - for call hang timeout, fall to idle, right now, it's fixed at 5s.
      *  - for 20ms timeout, sync/send call term
      */
     private class StateHang extends StateNode {
@@ -366,13 +366,14 @@ public class CallProcessor {
         @Override
         public void entry() {
             mLogger.d(TAG, "entry call hang");
-            rearmFlyWheel(GlobalConstants.CALL_HANG_PERIOD);
+//            mCallHangEntryTime = System.nanoTime();
+            mCallHangCountdown = GlobalConstants.CALL_HANG_COUNTDOWN;
+            sendCallTerm();
             rearmTxTimer();
         }
 
         @Override
         public void exit() {
-            cancelFlywheel();
             if( mTimerTask != null){
                 mTimerTask.cancel();
                 mTimerTask = null;
@@ -382,14 +383,15 @@ public class CallProcessor {
 
         @Override
         public void timerExpired(NamedTimerTask timerTask) {
-            if( timerTask == mFlywheelTimerTask ){
-                mLogger.i(TAG, "flywheel times out in " + mState);
-                mState = State.IDLE;
-                return;
-            } else if( timerTask == mTimerTask ) {
+            if( timerTask == mTimerTask ) {
                 mLogger.i(TAG, "init: timer exp");
                 sendCallTerm();
-                rearmTxTimer();
+                if( 0 == mCallHangCountdown){
+                    mLogger.i(TAG, "call hang over");
+                    mState = State.IDLE;
+                } else {
+                    rearmTxTimer();
+                }
             }
         }
 
@@ -408,12 +410,9 @@ public class CallProcessor {
                     break;
                 case ProtocolBase.PTYPE_CALL_DATA:
                     forwardToGrpMembers(proto);
-                    rearmFlyWheel(GlobalConstants.CALL_HANG_PERIOD);
                     break;
                 case ProtocolBase.PTYPE_CALL_TERM:
-                    mCallTermSeq = proto.getSequence();
-                    forwardToGrpMembers(proto);
-                    rearmTxTimer();
+                    // discard
                     break;
                 default:
                     mLogger.d(TAG, "hang: rxed unexp packet:" + proto.toString());
@@ -426,8 +425,8 @@ public class CallProcessor {
          */
         private void rearmTxTimer(){
             mTimerTask = createTimerTask();
-            long timeNow = System.nanoTime();
-            long delay = GlobalConstants.CALL_PACKET_INTERVAL + (mLastTime - timeNow) / (1000L * 1000);
+            long delay =  (GlobalConstants.CALL_HANG_COUNTDOWN - mCallHangCountdown )
+                    * GlobalConstants.CALL_PACKET_INTERVAL / (1000L * 1000);
             if( delay < 0){
                 delay = 1;
             }
@@ -475,6 +474,7 @@ public class CallProcessor {
         }
 
         NamedTimerTask mTimerTask;
+//        Long mCallHangEntryTime;
     }
 
     private void initializeSM(){

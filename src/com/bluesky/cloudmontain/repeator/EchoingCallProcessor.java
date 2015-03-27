@@ -217,10 +217,10 @@ public class EchoingCallProcessor {
 
         private void armTimer(){
             mTimerTask = createTimerTask();
-            mTimer.schedule(mTimerTask, GlobalConstants.CALL_HANG_PERIOD);
+            mTimer.schedule(mTimerTask, GlobalConstants.CALL_HANG_PERIOD_MS);
 
             mRandomTxTimerTask = createTimerTask();
-            mTimer.schedule(mRandomTxTimerTask, (new Random()).nextInt((int)GlobalConstants.CALL_HANG_PERIOD + 1));
+            mTimer.schedule(mRandomTxTimerTask, (new Random()).nextInt((int)GlobalConstants.CALL_HANG_PERIOD_MS + 1));
         }
 //        private void rearmTimer(){
 //            mTimerTask.cancel();
@@ -263,6 +263,7 @@ public class EchoingCallProcessor {
                         } else {
                             LOGGER.info(TAG + "sent " + mTxCount + " audio data packets");
                             mTxStep = TX_TERM;
+                            mCallHangCountdown = GlobalConstants.CALL_HANG_COUNTDOWN;
                             sendCallTerm();
                             ++mTxTermCount;
                         }
@@ -473,7 +474,8 @@ public class EchoingCallProcessor {
         CallTerm callTerm = new CallTerm(
                 mCallInfo.mTargetId,
                 GlobalConstants.SUID_TRUNK_MANAGER,
-                ++mTxSeq
+                ++mTxSeq,
+                --mCallHangCountdown
         );
         ByteBuffer payload = ByteBuffer.allocate(callTerm.getSize());
         callTerm.serialize(payload);
@@ -510,6 +512,7 @@ public class EchoingCallProcessor {
 
     CallInformation     mCallInfo;
     short               mTxSeq;
+    short               mCallHangCountdown;
 
     BufferedOutputStream mOutStream;
     BufferedInputStream  mInStream;
